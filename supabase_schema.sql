@@ -29,9 +29,13 @@ CREATE TABLE IF NOT EXISTS public.participants (
     status VARCHAR(30) DEFAULT 'Pending Review', -- 'Pending Review', 'Approved', 'Shortlisted', 'Rejected'
     judge_score NUMERIC(5, 2) DEFAULT 0,
     judge_notes TEXT,
+    photo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure photo_url column exists if table was created previously
+ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS photo_url TEXT;
 
 -- 2. Create Indexes for super fast search & branch filtering
 CREATE INDEX IF NOT EXISTS idx_participants_branch ON public.participants(branch);
@@ -110,25 +114,6 @@ WITH CHECK (bucket_id = 'follow-proofs');
 DROP POLICY IF EXISTS "Allow public read of follow-proofs" ON storage.objects;
 CREATE POLICY "Allow public read of follow-proofs" 
 ON storage.objects FOR SELECT 
-TO public 
-USING (bucket_id = 'follow-proofs');
-
--- Storage Deletion Policies (For Admin cleanup)
-DROP POLICY IF EXISTS "Allow delete from qirath-videos" ON storage.objects;
-CREATE POLICY "Allow delete from qirath-videos" 
-ON storage.objects FOR DELETE 
-TO public 
-USING (bucket_id = 'qirath-videos');
-
-DROP POLICY IF EXISTS "Allow delete from aadhaar-cards" ON storage.objects;
-CREATE POLICY "Allow delete from aadhaar-cards" 
-ON storage.objects FOR DELETE 
-TO public 
-USING (bucket_id = 'aadhaar-cards');
-
-DROP POLICY IF EXISTS "Allow delete from follow-proofs" ON storage.objects;
-CREATE POLICY "Allow delete from follow-proofs" 
-ON storage.objects FOR DELETE 
 TO public 
 USING (bucket_id = 'follow-proofs');
 

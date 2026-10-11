@@ -167,15 +167,13 @@ function renderTableRows() {
           <span class="status-pill ${statusClass}">${p.status}</span>
           ${p.judge_score > 0 ? `<div style="font-size:11.5px; color:var(--gold-300); margin-top:3px; font-weight:700;">Score: ${p.judge_score}/100</div>` : ''}
         </td>
-        <td>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="btn-nav-action btn-nav-gold" style="padding:6px 12px; font-size:12px;" onclick="openReviewDossier('${p.registration_id}')">
-              🔍 Review
-            </button>
-            <button class="btn-nav-action" style="padding:6px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#f87171; cursor:pointer;" title="Delete this entry and all files" onclick="deleteParticipantRecord('${p.registration_id}')">
-              🗑️
-            </button>
-          </div>
+        <td style="white-space:nowrap;">
+          <button class="btn-nav-action btn-nav-gold" style="padding:6px 12px; font-size:12px; margin-right:6px;" onclick="openReviewDossier('${p.registration_id}')">
+            🔍 Review
+          </button>
+          <button class="btn-nav-action" style="padding:6px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4);" onclick="promptDeleteParticipant('${p.registration_id}')">
+            🗑️ Delete
+          </button>
         </td>
       </tr>
     `;
@@ -264,6 +262,34 @@ function openReviewDossier(regId) {
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
       <!-- Left Column: Media Review -->
       <div>
+        <!-- Candidate Photo & Official Poster Section -->
+        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
+          🌟 Candidate Photo &amp; Celebratory Poster
+        </h4>
+        <div style="background:#06100a; border-radius:var(--radius-sm); border:1.5px solid var(--border-gold); padding:16px; text-align:center; margin-bottom:20px;">
+          <div style="position:relative; width:120px; height:120px; margin:0 auto 12px;">
+            <img id="dossierPhotoPreview" src="${participant.photo_url || 'assets/logo.png'}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid var(--gold-primary); box-shadow:0 0 20px rgba(212,167,59,0.4);" alt="Candidate Photo">
+            <label for="adminChangePhotoInput" style="position:absolute; bottom:0; right:0; background:#060a08; border:1px solid var(--gold-primary); border-radius:50%; width:32px; height:32px; display:grid; place-items:center; cursor:pointer; font-size:14px; color:var(--gold-100);" title="Upload / Change Photo">
+              📷
+            </label>
+            <input type="file" id="adminChangePhotoInput" accept="image/*" style="display:none;" onchange="handleAdminPhotoChange(event, '${participant.registration_id}')">
+          </div>
+          
+          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <button type="button" class="btn-nav-action btn-nav-gold" style="padding:8px 14px; font-size:12px;" onclick="downloadParticipantPoster('${participant.registration_id}')">
+              📥 Download Official Poster
+            </button>
+            <button type="button" class="btn-nav-action btn-nav-outline" style="padding:8px 12px; font-size:12px;" onclick="document.getElementById('adminChangePhotoInput').click()">
+              🔄 Change Photo
+            </button>
+            ${participant.photo_url ? `
+              <button type="button" class="btn-nav-action" style="padding:8px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4);" onclick="handleAdminDeletePhoto('${participant.registration_id}')">
+                ❌ Remove Photo
+              </button>
+            ` : ''}
+          </div>
+        </div>
+
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
           🎥 Qirath Recitation Video
         </h4>
@@ -275,23 +301,11 @@ function openReviewDossier(regId) {
                 ▶️ Open / Play Video in New Tab
               </a>
               <small style="display:block; color:var(--text-muted); margin-top:10px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
-              <div style="margin-top:12px;">
-                <button type="button" class="btn-nav-action" style="padding:5px 12px; font-size:11px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#f87171; cursor:pointer;" onclick="deleteParticipantVideo('${participant.registration_id}')">
-                  🗑️ Clear Video Link
-                </button>
-              </div>
-            </div>
-          ` : participant.video_url ? `
-            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
-            <div style="padding:8px 12px; background:#07120a; display:flex; justify-content:space-between; align-items:center;">
-              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original</a>
-              <button type="button" class="btn-nav-action" style="padding:4px 10px; font-size:11px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.3); color:#f87171; cursor:pointer;" onclick="deleteParticipantVideo('${participant.registration_id}')">
-                🗑️ Delete Video File (Free Space)
-              </button>
             </div>
           ` : `
-            <div style="padding:24px 16px; text-align:center; background:#0a1710; color:var(--text-muted); font-size:13px;">
-              ⚠️ Recitation video file has been deleted to save storage space.
+            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
+            <div style="padding:8px 12px; background:#07120a; text-align:right;">
+              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original Video</a>
             </div>
           `}
         </div>
@@ -382,15 +396,9 @@ function openReviewDossier(regId) {
             📲 Send WhatsApp Status Update to Participant
           </button>
 
-          <!-- Danger Zone: Permanent Deletion -->
-          <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(239, 68, 68, 0.25); text-align:center;">
-            <button class="btn-nav-action" style="width:100%; justify-content:center; padding:11px; font-size:12.5px; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; font-weight:700; cursor:pointer;" onclick="deleteParticipantRecord('${participant.registration_id}')">
-              🗑️ Permanently Delete Entry &amp; All Files
-            </button>
-            <small style="color:var(--text-muted); font-size:11px; display:block; margin-top:5px;">
-              Deletes video, Aadhaar, screenshots from Supabase Storage and removes database record.
-            </small>
-          </div>
+          <button class="btn-nav-action" style="width:100%; justify-content:center; padding:11px; margin-top:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4); cursor:pointer;" onclick="promptDeleteParticipant('${participant.registration_id}')">
+            🗑️ Delete Entry &amp; Data (with 10s Undo)
+          </button>
         </div>
       </div>
     </div>
@@ -578,62 +586,171 @@ function initSupabaseSettingsModal() {
   }
 }
 
-// Delete just the recitation video file (frees up cloud storage)
-async function deleteParticipantVideo(registrationId) {
-  const participant = allParticipants.find(p => p.registration_id === registrationId);
-  if (!participant || !participant.video_url) {
-    alert("No video file attached to this participant.");
-    return;
-  }
+// ====================================================================
+// DELETE CONFIRMATION & 10-SECOND UNDO CONTROLLER
+// ====================================================================
+let pendingDeleteParticipant = null;
+let lastDeletedParticipant = null;
+let undoTimer = null;
+let undoCountdown = 10;
+let undoInterval = null;
 
-  const confirmed = confirm(`Are you sure you want to delete the recitation video file for ${participant.full_name} (${participant.registration_id})?\n\nThis will remove the file from Supabase Storage to free up space. The participant details and score will remain.`);
-  if (!confirmed) return;
+function promptDeleteParticipant(regId) {
+  const p = allParticipants.find(x => x.registration_id === regId);
+  if (!p) return;
+  pendingDeleteParticipant = p;
 
-  try {
-    await deleteParticipantVideoFromBackend(registrationId, participant.video_url);
-    participant.video_url = '';
-    alert("✅ Recitation video file has been successfully deleted from storage.");
-    openReviewDossier(registrationId);
-    renderTableRows();
-  } catch (err) {
-    console.error("Delete video error:", err);
-    alert("Failed to delete video: " + err.message);
+  const msg = document.getElementById('deleteConfirmMessage');
+  if (msg) {
+    msg.innerHTML = `Are you sure you want to delete entry <strong>${p.registration_id}</strong> for <strong>${escapeHtml(p.full_name)}</strong>?<br><small style="color:#ef4444; margin-top:6px; display:block;">You will have 10 seconds to undo this action after clicking Delete.</small>`;
   }
+  document.getElementById('confirmDeleteModal')?.classList.add('open');
 }
 
-// Delete entire participant record and all storage files
-async function deleteParticipantRecord(registrationId) {
-  const participant = allParticipants.find(p => p.registration_id === registrationId);
-  if (!participant) return;
+document.getElementById('btnCancelDelete')?.addEventListener('click', () => {
+  document.getElementById('confirmDeleteModal')?.classList.remove('open');
+  pendingDeleteParticipant = null;
+});
 
-  const confirmed = confirm(`⚠️ PERMANENT DELETION\n\nAre you sure you want to delete:\n• Name: ${participant.full_name}\n• ID: ${participant.registration_id}\n• Branch: ${participant.branch}\n\nThis will permanently delete the entry and all uploaded files (video, Aadhaar, proofs) from the database and storage.\n\nThis action CANNOT be undone.`);
-  if (!confirmed) return;
+document.getElementById('btnConfirmDelete')?.addEventListener('click', async () => {
+  if (!pendingDeleteParticipant) return;
+  const toDelete = pendingDeleteParticipant;
+  document.getElementById('confirmDeleteModal')?.classList.remove('open');
+
+  // If review dossier is currently open for this participant, close it
+  if (activeReviewParticipant && activeReviewParticipant.registration_id === toDelete.registration_id) {
+    document.getElementById('reviewDossierModal')?.classList.remove('open');
+  }
 
   try {
-    const mediaUrls = {
-      video_url: participant.video_url,
-      aadhaar_url: participant.aadhaar_url,
-      ig_screenshot_url: participant.ig_screenshot_url,
-      wa_screenshot_url: participant.wa_screenshot_url
-    };
+    await deleteParticipantFromBackend(toDelete.registration_id);
+    
+    // Store in lastDeletedParticipant for Undo
+    lastDeletedParticipant = { ...toDelete };
 
-    await deleteParticipantFromBackend(registrationId, mediaUrls);
-
-    // Remove from local array
-    allParticipants = allParticipants.filter(p => p.registration_id !== registrationId);
-
-    // Close modal if open
-    const modal = document.getElementById('reviewDossierModal');
-    if (modal) modal.classList.remove('open');
-    activeReviewParticipant = null;
-
-    // Refresh UI
+    // Remove from active list
+    allParticipants = allParticipants.filter(p => p.registration_id !== toDelete.registration_id);
     renderStatsCounters(allParticipants);
     renderTableRows();
 
-    alert(`✅ Participant ${participant.full_name} (${registrationId}) and all associated files have been permanently deleted.`);
+    // Show Undo Toast with 10s Countdown
+    showUndoToast(toDelete);
   } catch (err) {
-    console.error('Delete error:', err);
     alert("Failed to delete entry: " + err.message);
+  }
+});
+
+function showUndoToast(p) {
+  const toast = document.getElementById('undoToastContainer');
+  const text = document.getElementById('undoToastText');
+  const countdown = document.getElementById('undoCountdownText');
+  if (!toast) return;
+
+  if (undoTimer) clearTimeout(undoTimer);
+  if (undoInterval) clearInterval(undoInterval);
+
+  text.innerHTML = `Deleted <strong>${p.registration_id}</strong> (${escapeHtml(p.full_name)})`;
+  undoCountdown = 10;
+  countdown.textContent = `Tap Undo within ${undoCountdown}s to restore`;
+
+  toast.style.display = 'flex';
+
+  undoInterval = setInterval(() => {
+    undoCountdown--;
+    if (undoCountdown > 0) {
+      countdown.textContent = `Tap Undo within ${undoCountdown}s to restore`;
+    } else {
+      clearInterval(undoInterval);
+      toast.style.display = 'none';
+      lastDeletedParticipant = null;
+    }
+  }, 1000);
+
+  undoTimer = setTimeout(() => {
+    toast.style.display = 'none';
+    lastDeletedParticipant = null;
+  }, 10000);
+}
+
+document.getElementById('btnUndoDelete')?.addEventListener('click', async () => {
+  if (!lastDeletedParticipant) return;
+  const restored = { ...lastDeletedParticipant };
+
+  if (undoTimer) clearTimeout(undoTimer);
+  if (undoInterval) clearInterval(undoInterval);
+  document.getElementById('undoToastContainer').style.display = 'none';
+
+  try {
+    await submitRegistrationToBackend(restored);
+    allParticipants.unshift(restored);
+    renderStatsCounters(allParticipants);
+    renderTableRows();
+    lastDeletedParticipant = null;
+    alert(`Entry ${restored.registration_id} for ${restored.full_name} has been restored successfully!`);
+  } catch (err) {
+    alert("Failed to restore entry: " + err.message);
+  }
+});
+
+document.getElementById('btnCloseUndoToast')?.addEventListener('click', () => {
+  if (undoTimer) clearTimeout(undoTimer);
+  if (undoInterval) clearInterval(undoInterval);
+  document.getElementById('undoToastContainer').style.display = 'none';
+});
+
+// ====================================================================
+// ADMIN POSTER & PHOTO ACTIONS
+// ====================================================================
+async function downloadParticipantPoster(regId) {
+  const p = allParticipants.find(x => x.registration_id === regId);
+  if (!p) return;
+  try {
+    const canvas = await generateCompetitionPoster(p, p.photo_url);
+    downloadPosterCanvas(canvas, `${p.registration_id}_Official_Poster.png`);
+  } catch (err) {
+    alert("Error generating poster: " + err.message);
+  }
+}
+
+async function handleAdminPhotoChange(event, regId) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const p = allParticipants.find(x => x.registration_id === regId);
+    if (!p) return;
+
+    // Fast compress and upload
+    const comp = typeof compressImage === 'function' ? await compressImage(file) : file;
+    const photoUrl = await uploadToStorage('aadhaar-cards', comp, regId);
+
+    await updateParticipantInBackend(regId, { photo_url: photoUrl });
+    p.photo_url = photoUrl;
+
+    // Update image preview in modal
+    const preview = document.getElementById('dossierPhotoPreview');
+    if (preview) preview.src = photoUrl;
+
+    alert("Candidate photo updated successfully!");
+  } catch (err) {
+    alert("Failed to update photo: " + err.message);
+  }
+}
+
+async function handleAdminDeletePhoto(regId) {
+  if (!confirm("Remove this candidate's photo?")) return;
+  try {
+    const p = allParticipants.find(x => x.registration_id === regId);
+    if (!p) return;
+
+    await updateParticipantInBackend(regId, { photo_url: "" });
+    p.photo_url = "";
+
+    const preview = document.getElementById('dossierPhotoPreview');
+    if (preview) preview.src = "assets/logo.png";
+
+    alert("Candidate photo removed.");
+  } catch (err) {
+    alert("Failed to remove photo: " + err.message);
   }
 }

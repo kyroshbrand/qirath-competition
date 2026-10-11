@@ -110,12 +110,33 @@ async function uploadToStorage(bucketName, file, folder = '') {
  */
 async function submitRegistrationToBackend(participantData) {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabaseClient
+    let insertData = { ...participantData };
+    let { data, error } = await supabaseClient
       .from('participants')
-      .insert([participantData])
+      .insert([insertData])
       .select();
 
     if (error) {
+      // If schema does not yet have photo_url column, fallback gracefully by packing in maqam_style
+      if (error.message && error.message.includes('photo_url') && insertData.photo_url) {
+        const fallbackData = { ...insertData };
+        fallbackData.maqam_style = fallbackData.maqam_style 
+          ? `${fallbackData.maqam_style} | photo:${fallbackData.photo_url}`
+          : `photo:${fallbackData.photo_url}`;
+        delete fallbackData.photo_url;
+
+        const retry = await supabaseClient
+          .from('participants')
+          .insert([fallbackData])
+          .select();
+
+        if (retry.error) {
+          console.error('Database insert retry error:', retry.error);
+          throw retry.error;
+        }
+        return retry.data[0];
+      }
+
       console.error('Database insert error:', error);
       throw error;
     }
@@ -126,6 +147,31 @@ async function submitRegistrationToBackend(participantData) {
     localStore.unshift(participantData);
     saveLocalParticipants(localStore);
     return participantData;
+  }
+}
+
+/**
+ * Delete a participant entry from database
+ */
+async function deleteParticipantFromBackend(registrationId) {
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabaseClient
+      .from('participants')
+      .delete()
+      .eq('registration_id', registrationId)
+      .select();
+
+    if (error) {
+      console.error('Database delete error:', error);
+      throw error;
+    }
+    return (data && data[0]) ? data[0] : { registration_id: registrationId };
+  } else {
+    let list = getLocalParticipants();
+    const deleted = list.find(p => p.registration_id === registrationId);
+    list = list.filter(p => p.registration_id !== registrationId);
+    saveLocalParticipants(list);
+    return deleted || { registration_id: registrationId };
   }
 }
 
@@ -154,7 +200,14 @@ async function fetchParticipantsFromBackend(filters = {}) {
       console.error('Database query error:', error);
       throw error;
     }
-    return data || [];
+    const list = data || [];
+    return list.map(p => {
+      if (!p.photo_url && p.maqam_style && p.maqam_style.includes('photo:')) {
+        const match = p.maqam_style.match(/photo:(https?:\/\/[^\s|]+)/);
+        if (match) p.photo_url = match[1];
+      }
+      return p;
+    });
   } else {
     // Demo Mode: read from LocalStorage
     let list = getLocalParticipants();
@@ -216,80 +269,6 @@ async function trackParticipantInBackend(searchVal) {
       p.registration_id.toLowerCase().includes(queryVal.toLowerCase()) || 
       p.phone.includes(queryVal)
     );
-  }
-}
-
-/**
- * Helper to delete a single file from Supabase storage by its URL
- */
-async function removeStorageFileByUrl(bucket, fullUrl) {
-  if (!isSupabaseConfigured() || !fullUrl || typeof fullUrl !== 'string') return;
-  const marker = `/storage/v1/object/public/${bucket}/`;
-  if (!fullUrl.includes(marker)) return; // External link (Google Drive, YouTube, etc.)
-  try {
-    const rawPath = fullUrl.split(marker)[1];
-    if (rawPath) {
-      const cleanPath = decodeURIComponent(rawPath.split('?')[0]);
-      await supabaseClient.storage.from(bucket).remove([cleanPath]);
-      console.log(`🗑️ Removed file from ${bucket}: ${cleanPath}`);
-    }
-  } catch (err) {
-    console.warn(`Could not remove file from ${bucket}:`, err);
-  }
-}
-
-/**
- * Delete participant recitation video file only (frees up storage)
- */
-async function deleteParticipantVideoFromBackend(registrationId, videoUrl) {
-  if (isSupabaseConfigured()) {
-    await removeStorageFileByUrl('qirath-videos', videoUrl);
-    const { error } = await supabaseClient
-      .from('participants')
-      .update({ video_url: '' })
-      .eq('registration_id', registrationId);
-
-    if (error) throw error;
-    return true;
-  } else {
-    const list = getLocalParticipants();
-    const idx = list.findIndex(p => p.registration_id === registrationId);
-    if (idx !== -1) {
-      list[idx].video_url = '';
-      saveLocalParticipants(list);
-    }
-    return true;
-  }
-}
-
-/**
- * Delete an entire participant entry and ALL associated storage files
- */
-async function deleteParticipantFromBackend(registrationId, mediaUrls = {}) {
-  if (isSupabaseConfigured()) {
-    const { video_url, aadhaar_url, ig_screenshot_url, wa_screenshot_url } = mediaUrls;
-    await Promise.allSettled([
-      removeStorageFileByUrl('qirath-videos', video_url),
-      removeStorageFileByUrl('aadhaar-cards', aadhaar_url),
-      removeStorageFileByUrl('follow-proofs', ig_screenshot_url),
-      removeStorageFileByUrl('follow-proofs', wa_screenshot_url)
-    ]);
-
-    const { error } = await supabaseClient
-      .from('participants')
-      .delete()
-      .eq('registration_id', registrationId);
-
-    if (error) {
-      console.error('Failed to delete participant from database:', error);
-      throw error;
-    }
-    return true;
-  } else {
-    let list = getLocalParticipants();
-    list = list.filter(p => p.registration_id !== registrationId);
-    saveLocalParticipants(list);
-    return true;
   }
 }
 

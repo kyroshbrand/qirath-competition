@@ -13,6 +13,7 @@
 
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="poster-generator.js"></script>
 
   <style>
     :root {
@@ -560,8 +561,9 @@
 
       <div class="row">
         <div class="f">
-          <label class="t" for="age">Age<u>*</u></label>
-          <input id="age" type="number" inputmode="numeric" min="3" max="100" placeholder="Age" required>
+          <label class="t" for="age">Age (8 - 18 Yrs)<u>*</u></label>
+          <input id="age" type="number" inputmode="numeric" min="8" max="18" placeholder="Age (8 - 18)" required>
+          <small style="font-size:11px; color:var(--mut); display:block; margin-top:4px;">* Open strictly to ages 8 to 18</small>
           <div class="err" id="e_age"></div>
         </div>
 
@@ -593,7 +595,20 @@
         </div>
       </div>
 
-      <div class="sh">Documents &amp; video</div>
+      <div class="sh">Documents, Photo &amp; video</div>
+
+      <div class="f">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span class="t" style="margin-bottom:0;">Candidate Photo<u>*</u></span>
+          <span style="font-size:11px; color:var(--gold-dark); font-weight:700;">For Official Poster</span>
+        </div>
+        <label class="file" id="l_photo">
+          <input id="photo" type="file" accept="image/*" required>
+          <b>Tap to upload candidate photo</b>
+          <small>Clear portrait photo for congratulations selection poster</small>
+        </label>
+        <div class="prev" id="p_photo"></div>
+      </div>
 
       <div class="f">
         <span class="t">Aadhaar card image<u>*</u></span>
@@ -734,7 +749,7 @@ $("tab_vid_link").addEventListener("click", () => {
 $("video_link").addEventListener("input", refresh);
 
 // Instant File Previews & Pre-Upload Validation
-["aadhaar", "video", "igshot", "washot"].forEach(id => {
+["photo", "aadhaar", "video", "igshot", "washot"].forEach(id => {
   $(id).addEventListener("change", () => {
     const f = $(id).files[0], box = $("p_" + id);
     box.innerHTML = "";
@@ -836,11 +851,12 @@ function state() {
 
   return {
     name: $("name").value.trim().length >= 2,
-    age: age >= 3 && age <= 100,
+    age: age >= 8 && age <= 18,
     phone: /^[6-9]\d{9}$/.test($("phone").value),
     place: $("place").value.trim().length >= 4,
     surah: $("surah").value.trim().length >= 2,
     branch: !!document.querySelector('input[name=branch]:checked'),
+    photo: !!$("photo").files[0],
     aadhaar: !!$("aadhaar").files[0],
     video: isVidValid,
     igshot: !!$("igshot").files[0],
@@ -868,6 +884,7 @@ function refresh() {
 }
 
 ["name", "age", "phone", "place", "surah", "ok"].forEach(i => $(i).addEventListener("input", refresh));
+["photo", "aadhaar", "video", "igshot", "washot"].forEach(i => $(i).addEventListener("change", refresh));
 $("br").addEventListener("change", refresh);
 refresh();
 
@@ -890,17 +907,19 @@ $("f").addEventListener("submit", async e => {
 
   try {
     // 1. High-speed client-side image compression in parallel (takes ~150ms)
-    const [compAadhaar, compIg, compWa] = await Promise.all([
+    const [compPhoto, compAadhaar, compIg, compWa] = await Promise.all([
+      compressImage($("photo").files[0]),
       compressImage($("aadhaar").files[0]),
       compressImage($("igshot").files[0]),
       compressImage($("washot").files[0])
     ]);
 
     fill.style.width = "40%";
-    hint.textContent = "2/3 Uploading verified documents and screenshots…";
+    hint.textContent = "2/3 Uploading photo, verified documents and screenshots…";
 
     // 2. Parallel upload of lightweight images (takes ~1 second)
-    const [aadhaarUrl, igUrl, waUrl] = await Promise.all([
+    const [photoUrl, aadhaarUrl, igUrl, waUrl] = await Promise.all([
+      uploadToStorage('aadhaar-cards', compPhoto, regId),
       uploadToStorage('aadhaar-cards', compAadhaar, regId),
       uploadToStorage('follow-proofs', compIg, regId),
       uploadToStorage('follow-proofs', compWa, regId)
@@ -921,9 +940,8 @@ $("f").addEventListener("submit", async e => {
     fill.style.width = "90%";
     hint.textContent = "Saving official entry to database…";
 
-    // Categorization
     const ageNum = parseInt($("age").value, 10);
-    const category = ageNum <= 12 ? "Junior (5 - 12 yrs)" : ageNum <= 18 ? "Senior (13 - 18 yrs)" : "Open (19+ yrs)";
+    const category = "Qirath Competition (8 - 18 yrs)";
 
     // Insert to Supabase Database
     const payload = {
@@ -936,6 +954,7 @@ $("f").addEventListener("submit", async e => {
       address: $("place").value.trim(),
       branch: br.value,
       surah_recited: $("surah").value.trim(),
+      photo_url: photoUrl,
       aadhaar_url: aadhaarUrl,
       video_url: videoUrl,
       ig_screenshot_url: igUrl,
@@ -949,23 +968,115 @@ $("f").addEventListener("submit", async e => {
     const saved = await submitRegistrationToBackend(payload);
     fill.style.width = "100%";
 
-    // Success Screen
+    // Success Screen with Celebratory Poster, Story & Status sharing
+    const candidatePhotoFile = $("photo").files[0];
     $("f").innerHTML = `
       <div class="ok">
         <img alt="Reid & Premium" src="assets/logo.png">
-        <h2>Entry Received</h2>
+        <h2 style="font-size:24px; color:var(--black); margin-bottom:4px;">Entry Confirmed!</h2>
         <div class="ok-badge">${regId}</div>
-        <p style="font-size:14px; color:#444; line-height:1.6; margin-bottom:14px;">
-          Thank you, <strong>${saved.full_name}</strong>! Your registration for the <strong>All Karnataka Qirath Competition</strong> (Reid &amp; Premium <strong>${saved.branch}</strong> Branch) has been officially recorded.
-        </p>
-        <p style="font-size:12.5px; color:#777; margin-bottom:20px;">
-          Please take a screenshot of this registration number for your reference.
-        </p>
-        <button onclick="window.location.reload()" style="padding:12px 24px; background:var(--black); color:var(--gold2); border:none; border-radius:6px; font-weight:700; cursor:pointer;">
+        
+        <div style="background:#050c08; border:2px solid var(--gold); border-radius:18px; padding:22px 14px; text-align:center; margin:18px 0; box-shadow:0 10px 35px rgba(0,0,0,0.85);">
+          <div style="font-size:11.5px; color:var(--gold2); letter-spacing:0.2em; text-transform:uppercase; font-weight:700; margin-bottom:6px;">Official Entry Poster</div>
+          <h3 style="font-family:var(--serif); color:#fff; font-size:20px; margin-bottom:14px;">🎉 Congratulations, ${saved.full_name}!</h3>
+          
+          <!-- Round Photo In Center with Tap to Change Option -->
+          <div style="position:relative; width:150px; height:150px; margin:0 auto 12px;">
+            <img id="posterRoundAvatar" src="${URL.createObjectURL(candidatePhotoFile)}" style="width:150px; height:150px; border-radius:50%; object-fit:cover; border:3.5px solid var(--gold); box-shadow:0 0 25px rgba(212,167,59,0.5); display:block;" alt="Candidate Photo">
+            <label for="changePosterPhoto" style="position:absolute; bottom:0; right:6px; background:#060a08; border:1.5px solid var(--gold); border-radius:50%; width:38px; height:38px; display:grid; place-items:center; cursor:pointer; font-size:17px; color:var(--gold2); box-shadow:0 4px 10px rgba(0,0,0,0.6);" title="Tap to change photo">
+              📷
+            </label>
+            <input type="file" id="changePosterPhoto" accept="image/*" style="display:none;">
+          </div>
+          <p style="font-size:12px; color:var(--gold2); margin-bottom:14px;">
+            Tap camera icon above to change photo on your poster
+          </p>
+
+          <!-- Generated Canvas Mount -->
+          <div id="posterCanvasContainer" style="margin-bottom:18px; border-radius:10px; overflow:hidden; border:1px solid rgba(212,167,59,0.35);">
+            <div style="padding:30px; color:var(--gold2); font-size:13px;">🎨 Generating HD Poster…</div>
+          </div>
+
+          <!-- Share & Download Buttons -->
+          <button type="button" id="btnDownloadPoster" style="width:100%; padding:14px; background:var(--gold-grad); color:#060e09; border:none; border-radius:8px; font-weight:800; font-size:13.5px; cursor:pointer; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:10px; box-shadow:0 4px 16px rgba(212,167,59,0.3);">
+            📥 Download Poster (HD Image)
+          </button>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+            <button type="button" id="btnShareWa" style="padding:12px 8px; background:#1ea853; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+              📲 WhatsApp Status
+            </button>
+            <button type="button" id="btnShareIg" style="padding:12px 8px; background:linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+              📸 Instagram Story
+            </button>
+          </div>
+
+          <p style="font-size:12px; color:#cfcab9; line-height:1.5;">
+            Share your poster to your WhatsApp Status &amp; Instagram Story and tag <strong>@reid_and_premium</strong>!
+          </p>
+        </div>
+
+        <button onclick="window.location.reload()" style="padding:12px 24px; background:var(--black); color:var(--gold2); border:1px solid var(--gold); border-radius:6px; font-weight:700; cursor:pointer; margin-top:8px;">
           Submit Another Entry
         </button>
       </div>
     `;
+
+    // Render Live Canvas Poster
+    let activePosterCanvas = null;
+    let currentPhotoSource = candidatePhotoFile;
+
+    async function updatePoster() {
+      const container = $("posterCanvasContainer");
+      if (!container) return;
+      container.innerHTML = "<div style='padding:30px; color:var(--gold2); font-size:13px;'>Rendering HD Poster…</div>";
+      activePosterCanvas = await generateCompetitionPoster(saved, currentPhotoSource);
+      activePosterCanvas.style.width = "100%";
+      activePosterCanvas.style.height = "auto";
+      activePosterCanvas.style.display = "block";
+      container.innerHTML = "";
+      container.appendChild(activePosterCanvas);
+    }
+
+    await updatePoster();
+
+    // Event Handlers
+    $("btnDownloadPoster").addEventListener("click", () => {
+      if (activePosterCanvas) {
+        downloadPosterCanvas(activePosterCanvas, `${regId}_Congratulations_Poster.png`);
+      }
+    });
+
+    $("btnShareWa").addEventListener("click", () => {
+      if (activePosterCanvas) {
+        sharePosterToWhatsApp(activePosterCanvas, saved);
+      }
+    });
+
+    $("btnShareIg").addEventListener("click", () => {
+      if (activePosterCanvas) {
+        sharePosterToInstagram(activePosterCanvas, saved);
+      }
+    });
+
+    // In-place photo change on poster
+    $("changePosterPhoto").addEventListener("change", async () => {
+      const newFile = $("changePosterPhoto").files[0];
+      if (newFile) {
+        currentPhotoSource = newFile;
+        $("posterRoundAvatar").src = URL.createObjectURL(newFile);
+        await updatePoster();
+
+        // Background sync to database
+        try {
+          const comp = await compressImage(newFile);
+          const newPhotoUrl = await uploadToStorage('aadhaar-cards', comp, regId);
+          await updateParticipantInBackend(regId, { photo_url: newPhotoUrl });
+        } catch (e) {
+          console.warn("Background photo update error:", e);
+        }
+      }
+    });
 
   } catch (err) {
     console.error("Submission failed:", err);
