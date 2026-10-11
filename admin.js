@@ -263,7 +263,20 @@ function openReviewDossier(regId) {
           🎥 Qirath Recitation Video
         </h4>
         <div style="background:#000; border-radius:var(--radius-sm); border:1px solid var(--border-gold); overflow:hidden; margin-bottom:18px;">
-          <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
+          ${(participant.video_url && (participant.video_url.includes('drive.google.com') || participant.video_url.includes('youtu') || !participant.video_url.match(/\.(mp4|mov|webm|avi|mkv|mp3|m4a|wav|aac|ogg)(\?.*)?$/i))) ? `
+            <div style="padding:24px 16px; text-align:center; background:#0a1710;">
+              <p style="color:var(--gold-200); font-weight:600; font-size:14px; margin-bottom:12px;">🔗 Cloud Video Link (Google Drive / YouTube)</p>
+              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" class="btn-nav-action btn-nav-gold" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; text-decoration:none; font-size:13px;">
+                ▶️ Open / Play Video in New Tab
+              </a>
+              <small style="display:block; color:var(--text-muted); margin-top:10px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
+            </div>
+          ` : `
+            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
+            <div style="padding:8px 12px; background:#07120a; text-align:right;">
+              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original Video</a>
+            </div>
+          `}
         </div>
 
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">

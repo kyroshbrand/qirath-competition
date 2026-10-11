@@ -63,18 +63,18 @@ TO anon, authenticated
 USING (true) 
 WITH CHECK (true);
 
--- 5. Create Storage Buckets for Uploads
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('qirath-videos', 'qirath-videos', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+-- 5. Create Storage Buckets for Uploads (Configured for up to 1000+ participants)
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('qirath-videos', 'qirath-videos', true, 524288000)
+ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 524288000;
 
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('aadhaar-cards', 'aadhaar-cards', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('aadhaar-cards', 'aadhaar-cards', true, 52428800)
+ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 52428800;
 
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('follow-proofs', 'follow-proofs', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('follow-proofs', 'follow-proofs', true, 52428800)
+ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 52428800;
 
 -- 6. Storage Security Policies (Safe drop & re-create)
 DROP POLICY IF EXISTS "Allow public uploads to qirath-videos" ON storage.objects;

@@ -77,15 +77,28 @@
       background: linear-gradient(to bottom, rgba(6, 10, 8, 0.35) 0%, rgba(6, 10, 8, 0) 35%, rgba(6, 10, 8, 0.8) 75%, var(--black) 100%);
     }
 
-    .arabic-calligraphy {
-      font-family: var(--arabic);
-      font-size: 26px;
+    .vid-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .vid-tab {
+      padding: 11px 8px;
+      border: 1.5px solid var(--line);
+      background: #faf8f4;
+      color: var(--mut);
+      font: 600 12.5px var(--sans);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .vid-tab.active {
+      background: var(--black);
       color: var(--gold2);
-      margin-top: -12px;
-      margin-bottom: 6px;
-      text-shadow: 0 2px 10px rgba(212, 167, 59, 0.4);
-      position: relative;
-      z-index: 3;
+      border-color: var(--gold);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
     }
 
     .logo-container {
@@ -527,7 +540,6 @@
       <img class="logo" alt="Reid &amp; Premium Groom Studio" src="assets/logo.png">
     </div>
 
-    <div class="arabic-calligraphy">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
     <div class="badge">All Karnataka</div>
     <h1>Qirath <span>Competition</span></h1>
     <p class="lead">Presented by Reid &amp; Premium – The Ultimate Groom Studio. Open to participants from across Karnataka.</p>
@@ -594,13 +606,34 @@
       </div>
 
       <div class="f">
-        <span class="t">Your Qirath video<u>*</u></span>
-        <label class="file" id="l_video">
-          <input id="video" type="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv,.mp3,.m4a,.wav,.aac,.ogg" required>
-          <b>Tap to choose video</b>
-          <small>MP4, MOV, AVI, MKV, WEBM, 3GP, MP3 and all other formats</small>
-        </label>
-        <div class="prev" id="p_video"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span class="t" style="margin-bottom:0;">Your Qirath video<u>*</u></span>
+          <span style="font-size:11px; color:var(--mut);">Direct file or link</span>
+        </div>
+
+        <div class="vid-tabs">
+          <button type="button" id="tab_vid_file" class="vid-tab active">📁 Upload Video File</button>
+          <button type="button" id="tab_vid_link" class="vid-tab">🔗 Google Drive / YouTube Link</button>
+        </div>
+
+        <!-- Mode 1: Direct File Upload -->
+        <div id="wrap_vid_file">
+          <label class="file" id="l_video">
+            <input id="video" type="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv,.mp3,.m4a,.wav,.aac,.ogg">
+            <b>Tap to choose video / audio</b>
+            <small>Direct upload up to 45 MB</small>
+          </label>
+          <div class="prev" id="p_video"></div>
+          <div id="vid_warn" style="display:none; color:var(--err); font-size:12px; font-weight:600; margin-top:8px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:10px 12px; line-height:1.5;"></div>
+        </div>
+
+        <!-- Mode 2: Google Drive / YouTube Link -->
+        <div id="wrap_vid_link" style="display:none;">
+          <input id="video_link" type="text" placeholder="https://drive.google.com/... or YouTube link">
+          <small style="color:var(--mut); display:block; margin-top:8px; font-size:12px; line-height:1.5;">
+            💡 <strong>Recommended for large HD videos (over 45MB):</strong> Upload to your Google Drive, set access to <em>“Anyone with the link can view”</em>, and paste the link here.
+          </small>
+        </div>
       </div>
 
       <!-- Follow & Unlock Section -->
@@ -674,18 +707,56 @@ $("br").innerHTML = BRANCHES.map(b => `
 `).join("");
 
 const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
-const FILES = { aadhaar: "img", video: "vid", igshot: "img", washot: "img" };
+const FILES = { aadhaar: "img", video: "vid", igshot: "img", waShot: "img" };
+const MAX_DIRECT_BYTES = 48 * 1024 * 1024; // 48MB direct upload limit
 
-// Live file previews
-for (const id in FILES) {
+let videoMode = 'file'; // 'file' or 'link'
+
+// Video Mode Switcher
+$("tab_vid_file").addEventListener("click", () => {
+  videoMode = "file";
+  $("tab_vid_file").classList.add("active");
+  $("tab_vid_link").classList.remove("active");
+  $("wrap_vid_file").style.display = "block";
+  $("wrap_vid_link").style.display = "none";
+  refresh();
+});
+
+$("tab_vid_link").addEventListener("click", () => {
+  videoMode = "link";
+  $("tab_vid_link").classList.add("active");
+  $("tab_vid_file").classList.remove("active");
+  $("wrap_vid_link").style.display = "block";
+  $("wrap_vid_file").style.display = "none";
+  refresh();
+});
+
+$("video_link").addEventListener("input", refresh);
+
+// Instant File Previews & Pre-Upload Validation
+["aadhaar", "video", "igshot", "washot"].forEach(id => {
   $(id).addEventListener("change", () => {
     const f = $(id).files[0], box = $("p_" + id);
     box.innerHTML = "";
-    $("l_" + id).classList.toggle("done", !!f);
+    const label = $("l_" + id);
+    if (label) label.classList.toggle("done", !!f);
+    
+    // Check oversized video immediately
+    if (id === "video" && f) {
+      const warn = $("vid_warn");
+      if (f.size > MAX_DIRECT_BYTES) {
+        const mb = (f.size / (1024 * 1024)).toFixed(1);
+        warn.style.display = "block";
+        warn.innerHTML = `⚠️ This video file is <strong>${mb} MB</strong>, which exceeds the direct upload limit (45 MB).<br>Please select a smaller clip, or click the <strong>Google Drive / YouTube Link</strong> tab above to paste your link!`;
+      } else {
+        warn.style.display = "none";
+      }
+    }
+
     if (f) {
       const u = URL.createObjectURL(f);
       let el;
-      if (FILES[id] === "img") {
+      if (id !== "video") {
         el = document.createElement("img");
         el.src = u;
       } else {
@@ -703,16 +774,66 @@ for (const id in FILES) {
     }
     refresh();
   });
-}
+});
 
 // Phone number sanitization
 $("phone").addEventListener("input", () => {
   $("phone").value = $("phone").value.replace(/\D/g, "").replace(/^91(?=\d{10})/, "").slice(0, 10);
 });
 
+// High-speed client-side image compression (Canvas)
+function compressImage(file, maxDimension = 1400, quality = 0.8) {
+  return new Promise(resolve => {
+    if (!file || !file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob || blob.size >= file.size) {
+            resolve(file);
+          } else {
+            const comp = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(comp);
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Form state validation
 function state() {
   const age = +$("age").value;
+  const vidFile = $("video").files[0];
+  const isVidValid = videoMode === "link"
+    ? $("video_link").value.trim().length >= 8
+    : (!!vidFile && vidFile.size <= MAX_DIRECT_BYTES);
+
   return {
     name: $("name").value.trim().length >= 2,
     age: age >= 3 && age <= 100,
@@ -721,7 +842,7 @@ function state() {
     surah: $("surah").value.trim().length >= 2,
     branch: !!document.querySelector('input[name=branch]:checked'),
     aadhaar: !!$("aadhaar").files[0],
-    video: !!$("video").files[0],
+    video: isVidValid,
     igshot: !!$("igshot").files[0],
     washot: !!$("washot").files[0],
     ok: $("ok").checked
@@ -730,19 +851,27 @@ function state() {
 
 function refresh() {
   const s = state(), miss = Object.keys(s).filter(k => !s[k]), shots = s.igshot && s.washot;
-  $("go").disabled = miss.length > 0;
-  $("hint").textContent = !shots 
-    ? "Upload both follow screenshots to enable Submit" 
-    : miss.length 
-      ? "Complete the remaining fields to enable Submit" 
-      : "All set – tap Submit";
+  const vidFile = $("video").files[0];
+  const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
+
+  $("go").disabled = miss.length > 0 || vidOversized;
+  
+  if (vidOversized) {
+    $("hint").textContent = "⚠️ Video is over 45MB. Choose a smaller clip or switch to Google Drive link.";
+  } else if (!shots) {
+    $("hint").textContent = "Upload both follow screenshots to enable Submit";
+  } else if (miss.length > 0) {
+    $("hint").textContent = "Complete remaining fields to enable Submit";
+  } else {
+    $("hint").textContent = "All set – tap Submit";
+  }
 }
 
 ["name", "age", "phone", "place", "surah", "ok"].forEach(i => $(i).addEventListener("input", refresh));
 $("br").addEventListener("change", refresh);
 refresh();
 
-// Form Submit with Supabase Uploads & Storage
+// Form Submit with Optimized Parallel Uploads
 $("f").addEventListener("submit", async e => {
   e.preventDefault();
   if (Object.values(state()).includes(false)) return;
@@ -753,32 +882,44 @@ $("f").addEventListener("submit", async e => {
 
   bar.style.display = "block";
   go.disabled = true;
-  hint.textContent = "Connecting to server & uploading files… please keep this page open.";
-  fill.style.width = "10%";
+  hint.textContent = "1/3 Optimizing documents & proofs for high-speed upload…";
+  fill.style.width = "20%";
 
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const regId = `AKQC-2026-${randomSuffix}`;
 
   try {
-    // 1. Upload Aadhaar
-    fill.style.width = "30%";
-    const aadhaarFile = $("aadhaar").files[0];
-    const aadhaarUrl = await uploadToStorage('aadhaar-cards', aadhaarFile, regId);
+    // 1. High-speed client-side image compression in parallel (takes ~150ms)
+    const [compAadhaar, compIg, compWa] = await Promise.all([
+      compressImage($("aadhaar").files[0]),
+      compressImage($("igshot").files[0]),
+      compressImage($("washot").files[0])
+    ]);
 
-    // 2. Upload Video
+    fill.style.width = "40%";
+    hint.textContent = "2/3 Uploading verified documents and screenshots…";
+
+    // 2. Parallel upload of lightweight images (takes ~1 second)
+    const [aadhaarUrl, igUrl, waUrl] = await Promise.all([
+      uploadToStorage('aadhaar-cards', compAadhaar, regId),
+      uploadToStorage('follow-proofs', compIg, regId),
+      uploadToStorage('follow-proofs', compWa, regId)
+    ]);
+
     fill.style.width = "65%";
-    const videoFile = $("video").files[0];
-    const videoUrl = await uploadToStorage('qirath-videos', videoFile, regId);
 
-    // 3. Upload Instagram Proof
-    fill.style.width = "80%";
-    const igFile = $("igshot").files[0];
-    const igUrl = await uploadToStorage('follow-proofs', igFile, regId);
+    // 3. Process recitation video (Direct upload OR Cloud link)
+    let videoUrl = "";
+    if (videoMode === "link") {
+      videoUrl = $("video_link").value.trim();
+    } else {
+      hint.textContent = "3/3 Uploading recitation video… please keep page open.";
+      fill.style.width = "75%";
+      videoUrl = await uploadToStorage('qirath-videos', $("video").files[0], regId);
+    }
 
-    // 4. Upload WhatsApp Proof
     fill.style.width = "90%";
-    const waFile = $("washot").files[0];
-    const waUrl = await uploadToStorage('follow-proofs', waFile, regId);
+    hint.textContent = "Saving official entry to database…";
 
     // Categorization
     const ageNum = parseInt($("age").value, 10);
