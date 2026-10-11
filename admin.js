@@ -2,6 +2,11 @@
  * ====================================================================
  * ALL KARNATAKA QIRATH COMPETITION - ADMIN MANAGEMENT CONTROLLER
  * Easy to Manage Dashboard for Reid & Premium Organizers
+ * Features: 
+ * - Full Dossier Review & Judging Assessment
+ * - Candidate Photo Upload & Official Poster Studio (Download / Update)
+ * - Safe Delete with Confirmation Modal & 10-Second Undo Timer
+ * - Direct WhatsApp Participant Notifications
  * ====================================================================
  */
 
@@ -14,12 +19,18 @@ let currentFilter = {
 };
 let activeReviewParticipant = null;
 
+// Safe Deletion & Undo State
+let pendingDeleteParticipant = null;
+let undoDeleteTimer = null;
+let undoDeleteCountdownInterval = null;
+let undoParticipantData = null;
+let posterLogoCache = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Check session authorization
   if (sessionStorage.getItem('AKQC_ADMIN_LOGGED_IN') !== 'true') {
-    // If not logged in, prompt or redirect
     const pin = prompt("Enter Admin Access PIN (Password: RP26):");
-    const validPin = SUPABASE_CONFIG.adminPin || "RP26";
+    const validPin = (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.adminPin) ? SUPABASE_CONFIG.adminPin : "RP26";
     if (pin === validPin || pin === "RP26") {
       sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
     } else {
@@ -32,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateBackendIndicator();
   initToolbarFilters();
   initSupabaseSettingsModal();
+  initDeleteHandlers();
   await loadAndRenderParticipants();
 });
 
@@ -53,7 +65,7 @@ function updateBackendIndicator() {
 async function loadAndRenderParticipants() {
   const tableBody = document.getElementById('participantsTableBody');
   if (tableBody) {
-    tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gold-200);">Loading participant records…</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--gold-200);">Loading participant records…</td></tr>`;
   }
 
   try {
@@ -63,7 +75,7 @@ async function loadAndRenderParticipants() {
   } catch (err) {
     console.error('Failed to load participants:', err);
     if (tableBody) {
-      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">Failed to load records: ${err.message}</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#ef4444;">Failed to load records: ${err.message}</td></tr>`;
     }
   }
 }
@@ -146,8 +158,13 @@ function renderTableRows() {
           <div style="font-size:11.5px; color:var(--text-muted);">${formatDate(p.created_at)}</div>
         </td>
         <td>
-          <strong style="color:#fff; font-size:14.5px;">${escapeHtml(p.full_name)}</strong>
-          <div style="font-size:12px; color:var(--text-muted);">${p.age} Yrs • ${p.category}</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="${p.photo_url || 'assets/logo.png'}" alt="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1.5px solid var(--gold-primary); background:#0c1710; flex-shrink:0;">
+            <div>
+              <strong style="color:#fff; font-size:14px; display:block;">${escapeHtml(p.full_name)}</strong>
+              <div style="font-size:11.5px; color:var(--text-muted);">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</div>
+            </div>
+          </div>
         </td>
         <td>
           <span style="font-weight:600; color:var(--gold-100);">📍 ${p.branch}</span>
@@ -168,10 +185,10 @@ function renderTableRows() {
           ${p.judge_score > 0 ? `<div style="font-size:11.5px; color:var(--gold-300); margin-top:3px; font-weight:700;">Score: ${p.judge_score}/100</div>` : ''}
         </td>
         <td style="white-space:nowrap;">
-          <button class="btn-nav-action btn-nav-gold" style="padding:6px 12px; font-size:12px; margin-right:6px;" onclick="openReviewDossier('${p.registration_id}')">
+          <button class="btn-nav-action btn-nav-gold" style="padding:5px 11px; font-size:11.5px; margin-right:4px;" onclick="openReviewDossier('${p.registration_id}')" title="Review Dossier, Video, Photo & Poster">
             🔍 Review
           </button>
-          <button class="btn-nav-action" style="padding:6px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4);" onclick="promptDeleteParticipant('${p.registration_id}')">
+          <button class="btn-table-action" style="padding:5px 9px; font-size:11px; background:rgba(239, 68, 68, 0.16); border:1px solid rgba(239, 68, 68, 0.45); color:#fca5a5; border-radius:4px; cursor:pointer;" onclick="promptDeleteParticipant('${p.registration_id}')" title="Delete Entry (Asks Confirmation)">
             🗑️ Delete
           </button>
         </td>
@@ -243,7 +260,497 @@ function initToolbarFilters() {
   }
 }
 
-// Open Detailed Review Dossier
+// ====================================================================
+// SAFE DELETION & 10-SECOND UNDO LOGIC
+// Never delete directly on click; always confirm via modal + 10s undo
+// ====================================================================
+
+function initDeleteHandlers() {
+  const cancelBtn = document.getElementById('btnCancelDelete');
+  const confirmBtn = document.getElementById('btnConfirmDelete');
+  const undoBtn = document.getElementById('btnUndoDelete');
+  const modal = document.getElementById('deleteConfirmModal');
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeDeleteConfirmModal);
+  }
+
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', executeTemporaryDelete);
+  }
+
+  if (undoBtn) {
+    undoBtn.addEventListener('click', triggerUndoDelete);
+  }
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeDeleteConfirmModal();
+    });
+  }
+}
+
+function promptDeleteParticipant(regId) {
+  const participant = allParticipants.find(p => p.registration_id === regId);
+  if (!participant) return;
+
+  pendingDeleteParticipant = participant;
+  const msgEl = document.getElementById('deleteConfirmMessage');
+  if (msgEl) {
+    msgEl.innerHTML = `Are you sure you want to delete participant <strong style="color:#fff;">${escapeHtml(participant.full_name)}</strong> (<span style="color:var(--gold-200); font-family:monospace;">${participant.registration_id}</span>)?<br><br><span style="color:#f87171; font-size:12px;">This will remove the entry record, recitation video, verified documents, and poster.</span>`;
+  }
+
+  const modal = document.getElementById('deleteConfirmModal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeDeleteConfirmModal() {
+  const modal = document.getElementById('deleteConfirmModal');
+  if (modal) modal.classList.remove('open');
+  pendingDeleteParticipant = null;
+}
+
+function executeTemporaryDelete() {
+  if (!pendingDeleteParticipant) return;
+  const p = pendingDeleteParticipant;
+  closeDeleteConfirmModal();
+
+  // If Review Dossier modal is currently inspecting this candidate, close it
+  const reviewModal = document.getElementById('reviewDossierModal');
+  if (reviewModal && activeReviewParticipant && activeReviewParticipant.registration_id === p.registration_id) {
+    reviewModal.classList.remove('open');
+  }
+
+  // Clear any existing active undo timer and finalize previous pending delete
+  if (undoDeleteTimer) {
+    clearTimeout(undoDeleteTimer);
+    clearInterval(undoDeleteCountdownInterval);
+    if (undoParticipantData) {
+      finalizePermanentDelete(undoParticipantData);
+    }
+  }
+
+  undoParticipantData = p;
+
+  // Immediate UI update: remove from active participants list
+  allParticipants = allParticipants.filter(item => item.registration_id !== p.registration_id);
+  renderStatsCounters(allParticipants);
+  renderTableRows();
+
+  // Show floating 10-second Undo Toast
+  const toast = document.getElementById('undoToast');
+  const toastText = document.getElementById('undoToastText');
+  const countdownEl = document.getElementById('undoCountdown');
+
+  if (toast) {
+    if (toastText) {
+      toastText.innerHTML = `Entry <strong>${escapeHtml(p.full_name)}</strong> (${p.registration_id}) deleted.`;
+    }
+    let secondsLeft = 10;
+    if (countdownEl) countdownEl.textContent = secondsLeft;
+    toast.style.display = 'flex';
+
+    undoDeleteCountdownInterval = setInterval(() => {
+      secondsLeft--;
+      if (countdownEl) countdownEl.textContent = secondsLeft;
+      if (secondsLeft <= 0) {
+        clearInterval(undoDeleteCountdownInterval);
+      }
+    }, 1000);
+
+    undoDeleteTimer = setTimeout(async () => {
+      toast.style.display = 'none';
+      if (undoParticipantData) {
+        const toDelete = undoParticipantData;
+        undoParticipantData = null;
+        await finalizePermanentDelete(toDelete);
+      }
+    }, 10000);
+  }
+}
+
+function triggerUndoDelete() {
+  if (!undoParticipantData) return;
+
+  if (undoDeleteTimer) clearTimeout(undoDeleteTimer);
+  if (undoDeleteCountdownInterval) clearInterval(undoDeleteCountdownInterval);
+
+  const restored = undoParticipantData;
+  undoParticipantData = null;
+
+  // Re-insert candidate back to top of list
+  allParticipants.unshift(restored);
+  renderStatsCounters(allParticipants);
+  renderTableRows();
+
+  const toast = document.getElementById('undoToast');
+  if (toast) toast.style.display = 'none';
+
+  alert(`✅ Deletion undone! Entry for ${restored.full_name} (${restored.registration_id}) has been restored.`);
+}
+
+async function finalizePermanentDelete(participant) {
+  try {
+    console.log(`Finalizing permanent delete for ${participant.registration_id}...`);
+    // Delete database record
+    await deleteParticipantFromBackend(participant.registration_id);
+
+    // Clean up uploaded files in Supabase storage buckets
+    if (participant.video_url && !participant.video_url.includes('drive.google.com') && !participant.video_url.includes('youtu')) {
+      await deleteFromStorage('qirath-videos', participant.video_url);
+    }
+    if (participant.aadhaar_url) {
+      await deleteFromStorage('aadhaar-cards', participant.aadhaar_url);
+    }
+    if (participant.photo_url) {
+      await deleteFromStorage('aadhaar-cards', participant.photo_url);
+    }
+    if (participant.poster_url) {
+      await deleteFromStorage('aadhaar-cards', participant.poster_url);
+    }
+    if (participant.ig_screenshot_url) {
+      await deleteFromStorage('follow-proofs', participant.ig_screenshot_url);
+    }
+    if (participant.wa_screenshot_url) {
+      await deleteFromStorage('follow-proofs', participant.wa_screenshot_url);
+    }
+    console.log(`Successfully finalized deletion of ${participant.registration_id} and all related files.`);
+  } catch (err) {
+    console.error('Failed to permanently delete participant:', err);
+  }
+}
+
+// ====================================================================
+// IMAGE COMPRESSION & OFFICIAL CANVAS POSTER GENERATOR (900x1200)
+// ====================================================================
+
+function compressImage(file, maxDimension = 1400, quality = 0.8) {
+  return new Promise(resolve => {
+    if (!file || !file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob || blob.size >= file.size) {
+            resolve(file);
+          } else {
+            const comp = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(comp);
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function getPosterLogo() {
+  if (posterLogoCache && posterLogoCache.complete && posterLogoCache.naturalWidth > 0) {
+    return posterLogoCache;
+  }
+  const logo = new Image();
+  logo.crossOrigin = "anonymous";
+  logo.src = "assets/logo.png";
+  await new Promise(r => {
+    if (logo.complete) r();
+    else { logo.onload = r; logo.onerror = r; }
+  });
+  posterLogoCache = logo;
+  return logo;
+}
+
+// Load remote URL through Blob to prevent canvas CORS taint
+async function loadImgFromUrl(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    await new Promise(r => {
+      if (img.complete) r();
+      else { img.onload = r; img.onerror = r; }
+    });
+    return img;
+  } catch (err) {
+    console.warn("Could not fetch image as blob, trying standard Image element:", err);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = url;
+    await new Promise(r => {
+      if (img.complete) r();
+      else { img.onload = r; img.onerror = r; }
+    });
+    return img;
+  }
+}
+
+async function generatePosterBlob(details, photoImgElement) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 900;
+  canvas.height = 1200;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Dark Emerald Radial Background
+  const grad = ctx.createRadialGradient(450, 360, 40, 450, 600, 750);
+  grad.addColorStop(0, '#0d3822');
+  grad.addColorStop(0.5, '#061a10');
+  grad.addColorStop(1, '#020603');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 900, 1200);
+
+  // 2. Gold Border Frame
+  ctx.strokeStyle = '#d4a73b';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(30, 30, 840, 1140);
+  ctx.strokeStyle = 'rgba(212, 167, 59, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(40, 40, 820, 1120);
+
+  // Corner Accents
+  const corners = [
+    [40, 40], [860, 40], [40, 1160], [860, 1160]
+  ];
+  corners.forEach(([cx, cy]) => {
+    ctx.fillStyle = '#d4a73b';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 3. Reid & Premium Logo
+  try {
+    const logoImg = await getPosterLogo();
+    ctx.drawImage(logoImg, 380, 60, 140, 115);
+  } catch(e) {}
+
+  // 4. Studio Presents Subtitle
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fae8b2";
+  ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("REID & PREMIUM GROOM STUDIO PRESENTS", 450, 205);
+
+  // 5. Championship Title
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "800 32px 'Playfair Display', serif";
+  ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
+
+  const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
+  titleGrad.addColorStop(0, "#fae8b2");
+  titleGrad.addColorStop(0.5, "#d4a73b");
+  titleGrad.addColorStop(1, "#9e751d");
+  ctx.fillStyle = titleGrad;
+  ctx.fillText("COMPETITION 2026", 450, 290);
+
+  // 6. Congratulations Ribbon
+  const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
+  ctx.fillStyle = titleGrad;
+  ctx.beginPath();
+  ctx.roundRect(ribX, ribY, ribW, ribH, 19);
+  ctx.fill();
+
+  ctx.fillStyle = "#050b07";
+  ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
+
+  // 7. Middle Circular Portrait Photo
+  const cx = 450, cy = 525, radius = 135;
+
+  // Outer gold halo
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Solid gold border ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+  ctx.strokeStyle = "#d4a73b";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Circular clip for candidate photo
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "#0d1b11";
+  ctx.fill();
+
+  if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
+    const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
+    const size = Math.min(pw, ph);
+    const sx = (pw - size) / 2, sy = (ph - size) / 2;
+    ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+  } else {
+    // Stylized silhouette if no image
+    ctx.fillStyle = "#d4a73b";
+    ctx.font = "800 70px 'Playfair Display', serif";
+    ctx.fillText("RP", cx, cy + 25);
+  }
+  ctx.restore();
+
+  // 8. Participant Name
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 34px 'Playfair Display', serif";
+  ctx.fillText(details.full_name || 'Candidate', 450, 715);
+
+  // 9. Registration ID Badge
+  const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
+  ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
+  ctx.strokeStyle = "#d4a73b";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(idX, idY, idW, idH, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#fae8b2";
+  ctx.font = "700 18px monospace";
+  ctx.fillText(details.registration_id, 450, 765);
+
+  // 10. Meta Information
+  ctx.fillStyle = "#d8d3c5";
+  ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
+
+  if (details.surah_recited) {
+    ctx.fillStyle = "#fae8b2";
+    ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
+  }
+
+  // 11. Official Verification Stamp
+  ctx.strokeStyle = "rgba(212, 167, 59, 0.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(120, 890);
+  ctx.lineTo(780, 890);
+  ctx.stroke();
+
+  ctx.fillStyle = "#d4a73b";
+  ctx.font = "700 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("✓ OFFICIALLY RECORDED REGISTRATION • ALL KARNATAKA QIRATH 2026", 450, 930);
+
+  ctx.fillStyle = "#8a8578";
+  ctx.font = "500 13px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("Puttur  •  Thokkotu  •  B.C Road  •  Sullia  |  reidandpremium.kyrosh.in", 450, 960);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// Download Official Poster from Admin
+async function adminDownloadPoster(regId) {
+  const p = allParticipants.find(item => item.registration_id === regId);
+  if (!p) return;
+
+  try {
+    let photoImg = null;
+    if (p.photo_url) {
+      photoImg = await loadImgFromUrl(p.photo_url);
+    }
+    const posterBlob = await generatePosterBlob(p, photoImg);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(posterBlob);
+    link.download = `AKQC_2026_${p.registration_id}_Official_Poster.png`;
+    link.click();
+  } catch (err) {
+    console.error("Failed to generate poster:", err);
+    alert("Could not generate poster: " + err.message);
+  }
+}
+
+// Upload / Change Candidate Photo from Admin
+async function adminHandlePhotoChange(event, regId) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const p = allParticipants.find(item => item.registration_id === regId);
+  if (!p) return;
+
+  try {
+    const comp = await compressImage(file);
+    const localUrl = URL.createObjectURL(comp);
+
+    // Update live preview in modal immediately
+    const previewImg = document.getElementById('dossierPhotoPreview');
+    if (previewImg) previewImg.src = localUrl;
+
+    let newPhotoUrl = localUrl;
+    if (isSupabaseConfigured()) {
+      newPhotoUrl = await uploadToStorage('aadhaar-cards', comp, `${p.registration_id}_photo_admin_${Date.now()}`);
+      await updateParticipantInBackend(p.registration_id, { photo_url: newPhotoUrl });
+    }
+
+    p.photo_url = newPhotoUrl;
+    const idx = allParticipants.findIndex(item => item.registration_id === regId);
+    if (idx !== -1) allParticipants[idx].photo_url = newPhotoUrl;
+
+    renderTableRows();
+    alert("✅ Candidate photo uploaded and updated successfully!");
+  } catch (err) {
+    console.error("Failed to update candidate photo:", err);
+    alert("Error updating photo: " + err.message);
+  }
+}
+
+// Remove Candidate Photo from Admin
+async function adminDeletePosterPhoto(regId) {
+  if (!confirm("Are you sure you want to remove the photo from this candidate's entry?")) return;
+
+  const p = allParticipants.find(item => item.registration_id === regId);
+  if (!p) return;
+
+  try {
+    if (p.photo_url && isSupabaseConfigured()) {
+      await deleteFromStorage('aadhaar-cards', p.photo_url);
+      await updateParticipantInBackend(p.registration_id, { photo_url: null });
+    }
+
+    p.photo_url = null;
+    const idx = allParticipants.findIndex(item => item.registration_id === regId);
+    if (idx !== -1) allParticipants[idx].photo_url = null;
+
+    const previewImg = document.getElementById('dossierPhotoPreview');
+    if (previewImg) previewImg.src = 'assets/logo.png';
+
+    renderTableRows();
+    alert("Candidate photo removed.");
+  } catch (err) {
+    console.error("Failed to remove photo:", err);
+    alert("Error removing photo: " + err.message);
+  }
+}
+
+// ====================================================================
+// REVIEW DOSSIER INSPECTOR MODAL
+// ====================================================================
+
 function openReviewDossier(regId) {
   const participant = allParticipants.find(p => p.registration_id === regId);
   if (!participant) return;
@@ -259,94 +766,105 @@ function openReviewDossier(regId) {
   if (participant.status === "Rejected") statusClass = "rejected";
 
   content.innerHTML = `
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
-      <!-- Left Column: Media Review -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+      <!-- Left Column: Photo Studio & Media Review -->
       <div>
-        <!-- Candidate Photo & Official Poster Section -->
-        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
-          🌟 Candidate Photo &amp; Celebratory Poster
-        </h4>
-        <div style="background:#06100a; border-radius:var(--radius-sm); border:1.5px solid var(--border-gold); padding:16px; text-align:center; margin-bottom:20px;">
-          <div style="position:relative; width:120px; height:120px; margin:0 auto 12px;">
-            <img id="dossierPhotoPreview" src="${participant.photo_url || 'assets/logo.png'}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid var(--gold-primary); box-shadow:0 0 20px rgba(212,167,59,0.4);" alt="Candidate Photo">
-            <label for="adminChangePhotoInput" style="position:absolute; bottom:0; right:0; background:#060a08; border:1px solid var(--gold-primary); border-radius:50%; width:32px; height:32px; display:grid; place-items:center; cursor:pointer; font-size:14px; color:var(--gold-100);" title="Upload / Change Photo">
-              📷
-            </label>
-            <input type="file" id="adminChangePhotoInput" accept="image/*" style="display:none;" onchange="handleAdminPhotoChange(event, '${participant.registration_id}')">
+        <!-- Official Candidate Photo & Poster Studio Card -->
+        <div style="background:#091710; border:1.5px solid var(--border-gold); border-radius:var(--radius-md); padding:18px; margin-bottom:20px; text-align:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:14.5px; margin:0; text-transform:uppercase;">
+              📷 Candidate Photo &amp; Poster Studio
+            </h4>
+            <span style="font-size:11px; color:var(--gold-300); font-family:monospace;">${participant.registration_id}</span>
           </div>
-          
-          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-            <button type="button" class="btn-nav-action btn-nav-gold" style="padding:8px 14px; font-size:12px;" onclick="downloadParticipantPoster('${participant.registration_id}')">
-              📥 Download Official Poster
-            </button>
-            <button type="button" class="btn-nav-action btn-nav-outline" style="padding:8px 12px; font-size:12px;" onclick="document.getElementById('adminChangePhotoInput').click()">
-              🔄 Change Photo
-            </button>
-            ${participant.photo_url ? `
-              <button type="button" class="btn-nav-action" style="padding:8px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4);" onclick="handleAdminDeletePhoto('${participant.registration_id}')">
-                ❌ Remove Photo
-              </button>
-            ` : ''}
+
+          <div style="display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; margin-bottom:14px;">
+            <!-- Circular Photo Frame -->
+            <div style="position:relative; width:100px; height:100px; cursor:pointer;" onclick="document.getElementById('adminDossierPhotoInput').click()" title="Click to change candidate photo">
+              <img id="dossierPhotoPreview" src="${participant.photo_url || 'assets/logo.png'}" alt="${escapeHtml(participant.full_name)}" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--gold-primary); object-fit:cover; background:#040905; box-shadow:0 0 16px rgba(212,167,59,0.4);">
+              <div style="position:absolute; bottom:0; right:2px; background:#000; border:1px solid var(--gold-primary); color:var(--gold-primary); border-radius:50%; width:26px; height:26px; display:grid; place-items:center; font-size:12px;">📷</div>
+            </div>
+
+            <div style="text-align:left; max-width:240px;">
+              <strong style="color:#fff; font-size:15px; display:block;">${escapeHtml(participant.full_name)}</strong>
+              <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Age: ${participant.age} Yrs • ${participant.category || 'Age 8 - 18 Years'}</div>
+              
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <button type="button" class="btn-table-action" style="background:#1d6b43; color:#fff; border:none; padding:5px 12px; border-radius:4px; font-size:11.5px; cursor:pointer; text-align:left;" onclick="document.getElementById('adminDossierPhotoInput').click()">
+                  📷 Upload / Change Photo
+                </button>
+                <button type="button" class="btn-table-action" style="background:var(--gold-primary); color:#000; font-weight:700; border:none; padding:5px 12px; border-radius:4px; font-size:11.5px; cursor:pointer; text-align:left;" onclick="adminDownloadPoster('${participant.registration_id}')">
+                  📥 Download Official Poster (PNG)
+                </button>
+                ${participant.photo_url ? `
+                  <button type="button" class="btn-table-action" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:3px 8px; border-radius:4px; font-size:11px; cursor:pointer; text-align:left;" onclick="adminDeletePosterPhoto('${participant.registration_id}')">
+                    🗑️ Remove Photo
+                  </button>
+                ` : ''}
+              </div>
+              <input type="file" id="adminDossierPhotoInput" accept="image/*" style="display:none;" onchange="adminHandlePhotoChange(event, '${participant.registration_id}')">
+            </div>
           </div>
+          <small style="color:var(--text-muted); font-size:11px; display:block;">Poster includes the circular candidate photo, registration ID, and branch details.</small>
         </div>
 
-        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
+        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
           🎥 Qirath Recitation Video
         </h4>
         <div style="background:#000; border-radius:var(--radius-sm); border:1px solid var(--border-gold); overflow:hidden; margin-bottom:18px;">
           ${(participant.video_url && (participant.video_url.includes('drive.google.com') || participant.video_url.includes('youtu') || !participant.video_url.match(/\.(mp4|mov|webm|avi|mkv|mp3|m4a|wav|aac|ogg)(\?.*)?$/i))) ? `
-            <div style="padding:24px 16px; text-align:center; background:#0a1710;">
-              <p style="color:var(--gold-200); font-weight:600; font-size:14px; margin-bottom:12px;">🔗 Cloud Video Link (Google Drive / YouTube)</p>
-              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" class="btn-nav-action btn-nav-gold" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; text-decoration:none; font-size:13px;">
+            <div style="padding:22px 16px; text-align:center; background:#0a1710;">
+              <p style="color:var(--gold-200); font-weight:600; font-size:13.5px; margin-bottom:10px;">🔗 Cloud Video Link (Google Drive / YouTube)</p>
+              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" class="btn-nav-action btn-nav-gold" style="display:inline-flex; align-items:center; gap:8px; padding:8px 18px; text-decoration:none; font-size:12.5px;">
                 ▶️ Open / Play Video in New Tab
               </a>
-              <small style="display:block; color:var(--text-muted); margin-top:10px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
+              <small style="display:block; color:var(--text-muted); margin-top:8px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
             </div>
           ` : `
-            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
-            <div style="padding:8px 12px; background:#07120a; text-align:right;">
+            <video src="${participant.video_url}" controls style="width:100%; max-height:260px; display:block;" preload="metadata"></video>
+            <div style="padding:6px 12px; background:#07120a; text-align:right;">
               <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original Video</a>
             </div>
           `}
         </div>
 
-        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
+        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
           🆔 Aadhaar Card Verification
         </h4>
         <div style="background:#000; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); overflow:hidden; text-align:center; padding:10px; margin-bottom:18px;">
-          <img src="${participant.aadhaar_url}" alt="Aadhaar photo" style="max-width:100%; max-height:200px; object-fit:contain; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.aadhaar_url}', '_blank')">
-          <small style="color:var(--text-muted); display:block; margin-top:4px;">Click photo to open full resolution</small>
+          <img src="${participant.aadhaar_url}" alt="Aadhaar photo" style="max-width:100%; max-height:190px; object-fit:contain; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.aadhaar_url}', '_blank')">
+          <small style="color:var(--text-muted); display:block; margin-top:4px; font-size:11px;">Click photo to inspect full resolution</small>
         </div>
 
-        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:16px; margin-bottom:12px; text-transform:uppercase;">
-          📱 Follow & Join Screenshots
+        <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
+          📱 Social Follow Verification
         </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div style="background:#091710; padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border-subtle);">
             <span style="font-size:11px; color:#e1306c; font-weight:700; display:block; margin-bottom:4px;">Instagram Follow</span>
-            <img src="${participant.ig_screenshot_url}" alt="Instagram Proof" style="width:100%; height:120px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.ig_screenshot_url}', '_blank')">
+            <img src="${participant.ig_screenshot_url}" alt="Instagram Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.ig_screenshot_url}', '_blank')">
           </div>
           <div style="background:#091710; padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border-subtle);">
             <span style="font-size:11px; color:#25d366; font-weight:700; display:block; margin-bottom:4px;">WhatsApp Channel</span>
-            <img src="${participant.wa_screenshot_url}" alt="WhatsApp Proof" style="width:100%; height:120px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.wa_screenshot_url}', '_blank')">
+            <img src="${participant.wa_screenshot_url}" alt="WhatsApp Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.wa_screenshot_url}', '_blank')">
           </div>
         </div>
       </div>
 
       <!-- Right Column: Participant Dossier & Grading -->
       <div>
-        <div style="background:#091710; border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:20px; margin-bottom:20px;">
+        <div style="background:#091710; border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:18px; margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <span class="status-pill ${statusClass}" id="dossierStatusBadge">${participant.status}</span>
             <span style="font-family:monospace; color:var(--gold-300); font-weight:700;">${participant.registration_id}</span>
           </div>
-          <h3 style="font-size:20px; color:#fff; font-family:var(--font-serif);">${escapeHtml(participant.full_name)}</h3>
-          <p style="color:var(--text-muted); font-size:13px; margin-bottom:14px;">
-            ${participant.age} Years • ${participant.category} • Reid & Premium <strong>${participant.branch}</strong> Branch
+          <h3 style="font-size:19px; color:#fff; font-family:var(--font-serif); margin-bottom:2px;">${escapeHtml(participant.full_name)}</h3>
+          <p style="color:var(--text-muted); font-size:12.5px; margin-bottom:12px;">
+            ${participant.age} Years • ${participant.category || 'Age 8 - 18 Years'} • Reid &amp; Premium <strong>${participant.branch}</strong> Branch
           </p>
 
-          <table style="width:100%; font-size:13px; line-height:1.8;">
-            <tr><td style="color:var(--text-muted); width:35%;">Phone:</td><td><strong style="color:#fff;">${participant.phone}</strong></td></tr>
+          <table style="width:100%; font-size:12.5px; line-height:1.75;">
+            <tr><td style="color:var(--text-muted); width:32%;">Phone:</td><td><strong style="color:#fff;">${participant.phone}</strong></td></tr>
             <tr><td style="color:var(--text-muted);">WhatsApp:</td><td><strong style="color:#fff;">${participant.whatsapp || participant.phone}</strong></td></tr>
             <tr><td style="color:var(--text-muted);">Address:</td><td style="color:#d8d3c5;">${escapeHtml(participant.address || 'N/A')}, ${escapeHtml(participant.district || '')}</td></tr>
             <tr><td style="color:var(--text-muted);">Surah Recited:</td><td><strong style="color:var(--gold-200);">📖 ${escapeHtml(participant.surah_recited || 'N/A')}</strong></td></tr>
@@ -355,51 +873,59 @@ function openReviewDossier(regId) {
         </div>
 
         <!-- Judging & Status Change Box -->
-        <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px;">
-          <h4 style="font-family:var(--font-serif); color:var(--gold-100); font-size:16px; margin-bottom:14px; text-transform:uppercase;">
-            ⚖️ Official Assessment & Action
+        <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:18px; margin-bottom:16px;">
+          <h4 style="font-family:var(--font-serif); color:var(--gold-100); font-size:15px; margin-bottom:12px; text-transform:uppercase;">
+            ⚖️ Official Assessment &amp; Status
           </h4>
 
-          <div style="margin-bottom:14px;">
-            <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; font-weight:600;">
+          <div style="margin-bottom:12px;">
+            <label style="display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; font-weight:600;">
               Judge Total Score (0 - 100):
             </label>
-            <input type="number" id="dossierScoreInput" class="form-control" min="0" max="100" step="0.5" value="${participant.judge_score || ''}" placeholder="e.g. 92.5">
+            <input type="number" id="dossierScoreInput" class="form-control" min="0" max="100" step="0.5" value="${participant.judge_score || ''}" placeholder="e.g. 94.0">
           </div>
 
-          <div style="margin-bottom:16px;">
-            <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; font-weight:600;">
-              Judge Feedback / Evaluation Notes:
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; font-weight:600;">
+              Judge Evaluation Notes / Comments:
             </label>
-            <textarea id="dossierNotesInput" class="form-control" placeholder="Comments on Tajweed, voice control, waqf, pronunciation...">${escapeHtml(participant.judge_notes || '')}</textarea>
+            <textarea id="dossierNotesInput" class="form-control" rows="2" placeholder="Tajweed, voice control, pronunciation...">${escapeHtml(participant.judge_notes || '')}</textarea>
           </div>
 
-          <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; font-weight:600;">
+          <label style="display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; font-weight:600;">
             Update Status:
           </label>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
-            <button class="btn-nav-action btn-nav-gold" style="justify-content:center; padding:10px;" onclick="saveDossierStatus('Approved')">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+            <button class="btn-nav-action btn-nav-gold" style="justify-content:center; padding:8px;" onclick="saveDossierStatus('Approved')">
               ✅ Approve Entry
             </button>
-            <button class="btn-nav-action" style="justify-content:center; padding:10px; background:linear-gradient(135deg, #1d6b43, #22c55e); color:#fff; border:none;" onclick="saveDossierStatus('Shortlisted')">
-              🌟 Shortlist for Finale
+            <button class="btn-nav-action" style="justify-content:center; padding:8px; background:linear-gradient(135deg, #1d6b43, #22c55e); color:#fff; border:none;" onclick="saveDossierStatus('Shortlisted')">
+              🌟 Shortlist Finale
             </button>
-            <button class="btn-nav-action btn-nav-outline" style="justify-content:center; padding:10px;" onclick="saveDossierStatus('Pending Review')">
+            <button class="btn-nav-action btn-nav-outline" style="justify-content:center; padding:8px;" onclick="saveDossierStatus('Pending Review')">
               ⏳ Keep Pending
             </button>
-            <button class="btn-nav-action" style="justify-content:center; padding:10px; background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.5); color:#f87171;" onclick="saveDossierStatus('Rejected')">
+            <button class="btn-nav-action" style="justify-content:center; padding:8px; background:rgba(239, 68, 68, 0.18); border:1px solid rgba(239, 68, 68, 0.5); color:#f87171;" onclick="saveDossierStatus('Rejected')">
               ❌ Reject Entry
             </button>
           </div>
 
-          <button class="btn-submit-entry" style="padding:12px; font-size:13px; background:#25d366; color:#06140b; border:none;" onclick="openWhatsAppChat('${participant.phone}', '${escapeHtml(participant.full_name)}', '${participant.registration_id}', '${participant.branch}', '${participant.status}')">
+          <button class="btn-submit-entry" style="padding:10px; font-size:12.5px; background:#25d366; color:#06140b; border:none; width:100%; font-weight:700;" onclick="openWhatsAppChat('${participant.phone}', '${escapeHtml(participant.full_name)}', '${participant.registration_id}', '${participant.branch}', '${participant.status}')">
             📲 Send WhatsApp Status Update to Participant
           </button>
+        </div>
 
-          <button class="btn-nav-action" style="width:100%; justify-content:center; padding:11px; margin-top:12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4); cursor:pointer;" onclick="promptDeleteParticipant('${participant.registration_id}')">
-            🗑️ Delete Entry &amp; Data (with 10s Undo)
+        <!-- Danger Zone: Safe Delete Entry -->
+        <div style="padding:12px 16px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.3); border-radius:var(--radius-sm); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="color:#f87171; font-size:12.5px; display:block;">Delete Entry &amp; Files</strong>
+            <small style="color:var(--text-muted); font-size:11px;">Prompts confirmation + 10s undo</small>
+          </div>
+          <button type="button" class="btn-nav-action" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; font-size:11.5px;" onclick="promptDeleteParticipant('${participant.registration_id}')">
+            🗑️ Delete Entry
           </button>
         </div>
+
       </div>
     </div>
   `;
@@ -458,7 +984,7 @@ function openWhatsAppChat(phone, name, regId, branch, status) {
   let message = "";
 
   if (status === "Approved") {
-    message = `Assalamu Alaikum *${name}*,\n\nCongratulations! Your registration for the *All Karnataka Qirath Competition* (Reid & Premium ${branch} Branch) has been *APPROVED*! ✅\n\nRegistration ID: *${regId}*\nOur judging panel will evaluate your recitation for the Grand Finale shortlist.\n\nBest Regards,\n*Reid & Premium Groom Studio*`;
+    message = `Assalamu Alaikum *${name}*,\n\nCongratulations! Your registration for the *All Karnataka Qirath Competition* (Reid & Premium ${branch} Branch) has been *APPROVED*! ✅\n\nRegistration ID: *${regId}*\nCategory: *Age 08 - 18 Years*\nOur judging panel will evaluate your recitation for the Grand Finale shortlist.\n\nBest Regards,\n*Reid & Premium Groom Studio*`;
   } else if (status === "Shortlisted") {
     message = `Assalamu Alaikum *${name}*,\n\n🌟 *GRAND NEWS!* You have been *SHORTLISTED FOR THE GRAND FINALE* of the All Karnataka Qirath Competition!\n\nRegistration ID: *${regId}*\nBranch: *Reid & Premium ${branch}*\n\nOur organizing committee will contact you shortly with the Grand Finale date and venue details. Mabrook!\n\n*Reid & Premium Groom Studio*`;
   } else {
@@ -491,6 +1017,7 @@ function exportParticipantsToCsv() {
     "Status",
     "Judge Score",
     "Judge Notes",
+    "Photo URL",
     "Video URL",
     "Aadhaar URL",
     "Registered At"
@@ -500,7 +1027,7 @@ function exportParticipantsToCsv() {
     `"${p.registration_id || ''}"`,
     `"${(p.full_name || '').replace(/"/g, '""')}"`,
     p.age || '',
-    `"${p.category || ''}"`,
+    `"${p.category || 'Age 8 - 18 Years'}"`,
     `"${p.branch || ''}"`,
     `"${p.phone || ''}"`,
     `"${p.whatsapp || ''}"`,
@@ -511,6 +1038,7 @@ function exportParticipantsToCsv() {
     `"${p.status || ''}"`,
     p.judge_score || 0,
     `"${(p.judge_notes || '').replace(/"/g, '""')}"`,
+    `"${p.photo_url || ''}"`,
     `"${p.video_url || ''}"`,
     `"${p.aadhaar_url || ''}"`,
     `"${p.created_at || ''}"`
@@ -583,174 +1111,5 @@ function initSupabaseSettingsModal() {
         await loadAndRenderParticipants();
       }
     });
-  }
-}
-
-// ====================================================================
-// DELETE CONFIRMATION & 10-SECOND UNDO CONTROLLER
-// ====================================================================
-let pendingDeleteParticipant = null;
-let lastDeletedParticipant = null;
-let undoTimer = null;
-let undoCountdown = 10;
-let undoInterval = null;
-
-function promptDeleteParticipant(regId) {
-  const p = allParticipants.find(x => x.registration_id === regId);
-  if (!p) return;
-  pendingDeleteParticipant = p;
-
-  const msg = document.getElementById('deleteConfirmMessage');
-  if (msg) {
-    msg.innerHTML = `Are you sure you want to delete entry <strong>${p.registration_id}</strong> for <strong>${escapeHtml(p.full_name)}</strong>?<br><small style="color:#ef4444; margin-top:6px; display:block;">You will have 10 seconds to undo this action after clicking Delete.</small>`;
-  }
-  document.getElementById('confirmDeleteModal')?.classList.add('open');
-}
-
-document.getElementById('btnCancelDelete')?.addEventListener('click', () => {
-  document.getElementById('confirmDeleteModal')?.classList.remove('open');
-  pendingDeleteParticipant = null;
-});
-
-document.getElementById('btnConfirmDelete')?.addEventListener('click', async () => {
-  if (!pendingDeleteParticipant) return;
-  const toDelete = pendingDeleteParticipant;
-  document.getElementById('confirmDeleteModal')?.classList.remove('open');
-
-  // If review dossier is currently open for this participant, close it
-  if (activeReviewParticipant && activeReviewParticipant.registration_id === toDelete.registration_id) {
-    document.getElementById('reviewDossierModal')?.classList.remove('open');
-  }
-
-  try {
-    await deleteParticipantFromBackend(toDelete.registration_id);
-    
-    // Store in lastDeletedParticipant for Undo
-    lastDeletedParticipant = { ...toDelete };
-
-    // Remove from active list
-    allParticipants = allParticipants.filter(p => p.registration_id !== toDelete.registration_id);
-    renderStatsCounters(allParticipants);
-    renderTableRows();
-
-    // Show Undo Toast with 10s Countdown
-    showUndoToast(toDelete);
-  } catch (err) {
-    alert("Failed to delete entry: " + err.message);
-  }
-});
-
-function showUndoToast(p) {
-  const toast = document.getElementById('undoToastContainer');
-  const text = document.getElementById('undoToastText');
-  const countdown = document.getElementById('undoCountdownText');
-  if (!toast) return;
-
-  if (undoTimer) clearTimeout(undoTimer);
-  if (undoInterval) clearInterval(undoInterval);
-
-  text.innerHTML = `Deleted <strong>${p.registration_id}</strong> (${escapeHtml(p.full_name)})`;
-  undoCountdown = 10;
-  countdown.textContent = `Tap Undo within ${undoCountdown}s to restore`;
-
-  toast.style.display = 'flex';
-
-  undoInterval = setInterval(() => {
-    undoCountdown--;
-    if (undoCountdown > 0) {
-      countdown.textContent = `Tap Undo within ${undoCountdown}s to restore`;
-    } else {
-      clearInterval(undoInterval);
-      toast.style.display = 'none';
-      lastDeletedParticipant = null;
-    }
-  }, 1000);
-
-  undoTimer = setTimeout(() => {
-    toast.style.display = 'none';
-    lastDeletedParticipant = null;
-  }, 10000);
-}
-
-document.getElementById('btnUndoDelete')?.addEventListener('click', async () => {
-  if (!lastDeletedParticipant) return;
-  const restored = { ...lastDeletedParticipant };
-
-  if (undoTimer) clearTimeout(undoTimer);
-  if (undoInterval) clearInterval(undoInterval);
-  document.getElementById('undoToastContainer').style.display = 'none';
-
-  try {
-    await submitRegistrationToBackend(restored);
-    allParticipants.unshift(restored);
-    renderStatsCounters(allParticipants);
-    renderTableRows();
-    lastDeletedParticipant = null;
-    alert(`Entry ${restored.registration_id} for ${restored.full_name} has been restored successfully!`);
-  } catch (err) {
-    alert("Failed to restore entry: " + err.message);
-  }
-});
-
-document.getElementById('btnCloseUndoToast')?.addEventListener('click', () => {
-  if (undoTimer) clearTimeout(undoTimer);
-  if (undoInterval) clearInterval(undoInterval);
-  document.getElementById('undoToastContainer').style.display = 'none';
-});
-
-// ====================================================================
-// ADMIN POSTER & PHOTO ACTIONS
-// ====================================================================
-async function downloadParticipantPoster(regId) {
-  const p = allParticipants.find(x => x.registration_id === regId);
-  if (!p) return;
-  try {
-    const canvas = await generateCompetitionPoster(p, p.photo_url);
-    downloadPosterCanvas(canvas, `${p.registration_id}_Official_Poster.png`);
-  } catch (err) {
-    alert("Error generating poster: " + err.message);
-  }
-}
-
-async function handleAdminPhotoChange(event, regId) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    const p = allParticipants.find(x => x.registration_id === regId);
-    if (!p) return;
-
-    // Fast compress and upload
-    const comp = typeof compressImage === 'function' ? await compressImage(file) : file;
-    const photoUrl = await uploadToStorage('aadhaar-cards', comp, regId);
-
-    await updateParticipantInBackend(regId, { photo_url: photoUrl });
-    p.photo_url = photoUrl;
-
-    // Update image preview in modal
-    const preview = document.getElementById('dossierPhotoPreview');
-    if (preview) preview.src = photoUrl;
-
-    alert("Candidate photo updated successfully!");
-  } catch (err) {
-    alert("Failed to update photo: " + err.message);
-  }
-}
-
-async function handleAdminDeletePhoto(regId) {
-  if (!confirm("Remove this candidate's photo?")) return;
-  try {
-    const p = allParticipants.find(x => x.registration_id === regId);
-    if (!p) return;
-
-    await updateParticipantInBackend(regId, { photo_url: "" });
-    p.photo_url = "";
-
-    const preview = document.getElementById('dossierPhotoPreview');
-    if (preview) preview.src = "assets/logo.png";
-
-    alert("Candidate photo removed.");
-  } catch (err) {
-    alert("Failed to remove photo: " + err.message);
   }
 }

@@ -23,19 +23,21 @@ CREATE TABLE IF NOT EXISTS public.participants (
     surah_recited VARCHAR(150),
     maqam_style VARCHAR(100),
     aadhaar_url TEXT,
+    photo_url TEXT,
+    poster_url TEXT,
     video_url TEXT NOT NULL,
     ig_screenshot_url TEXT,
     wa_screenshot_url TEXT,
     status VARCHAR(30) DEFAULT 'Pending Review', -- 'Pending Review', 'Approved', 'Shortlisted', 'Rejected'
     judge_score NUMERIC(5, 2) DEFAULT 0,
     judge_notes TEXT,
-    photo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure photo_url column exists if table was created previously
+-- In case table already exists, add columns safely:
 ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS poster_url TEXT;
 
 -- 2. Create Indexes for super fast search & branch filtering
 CREATE INDEX IF NOT EXISTS idx_participants_branch ON public.participants(branch);
@@ -93,6 +95,12 @@ ON storage.objects FOR SELECT
 TO public 
 USING (bucket_id = 'qirath-videos');
 
+DROP POLICY IF EXISTS "Allow public delete from qirath-videos" ON storage.objects;
+CREATE POLICY "Allow public delete from qirath-videos" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id = 'qirath-videos');
+
 DROP POLICY IF EXISTS "Allow public uploads to aadhaar-cards" ON storage.objects;
 CREATE POLICY "Allow public uploads to aadhaar-cards" 
 ON storage.objects FOR INSERT 
@@ -105,6 +113,12 @@ ON storage.objects FOR SELECT
 TO public 
 USING (bucket_id = 'aadhaar-cards');
 
+DROP POLICY IF EXISTS "Allow public delete from aadhaar-cards" ON storage.objects;
+CREATE POLICY "Allow public delete from aadhaar-cards" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id = 'aadhaar-cards');
+
 DROP POLICY IF EXISTS "Allow public uploads to follow-proofs" ON storage.objects;
 CREATE POLICY "Allow public uploads to follow-proofs" 
 ON storage.objects FOR INSERT 
@@ -114,6 +128,12 @@ WITH CHECK (bucket_id = 'follow-proofs');
 DROP POLICY IF EXISTS "Allow public read of follow-proofs" ON storage.objects;
 CREATE POLICY "Allow public read of follow-proofs" 
 ON storage.objects FOR SELECT 
+TO public 
+USING (bucket_id = 'follow-proofs');
+
+DROP POLICY IF EXISTS "Allow public delete from follow-proofs" ON storage.objects;
+CREATE POLICY "Allow public delete from follow-proofs" 
+ON storage.objects FOR DELETE 
 TO public 
 USING (bucket_id = 'follow-proofs');
 

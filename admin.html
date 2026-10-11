@@ -146,7 +146,7 @@
 
         <select id="filterCategory" class="filter-select">
           <option value="All">All Categories</option>
-          <option value="Qirath Competition (8 - 18 yrs)">Qirath (8 - 18 yrs)</option>
+          <option value="Age 8 - 18 Years">Age 8 - 18 Years</option>
         </select>
       </div>
     </div>
@@ -191,6 +191,33 @@
         <!-- Rendered by admin.js -->
       </div>
     </div>
+  </div>
+
+  <!-- Delete Confirmation Modal (Prevents accidental direct deletion) -->
+  <div class="modal-backdrop" id="deleteConfirmModal">
+    <div class="modal-box" style="max-width:440px; text-align:center; border:2px solid #ef4444;">
+      <div style="font-size:38px; margin-bottom:8px;">⚠️</div>
+      <h3 style="color:#fff; font-size:18px; margin-bottom:10px;">Delete Participant Entry?</h3>
+      <p id="deleteConfirmMessage" style="font-size:13.5px; color:var(--text-muted); margin-bottom:20px; line-height:1.5;">
+        Are you sure you want to delete this participant? This will remove the participant record, video, and documents.
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button type="button" class="btn-nav-action btn-nav-outline" id="btnCancelDelete" style="padding:10px 20px;">
+          Cancel
+        </button>
+        <button type="button" class="btn-nav-action" id="btnConfirmDelete" style="background:#ef4444; color:#fff; border:none; padding:10px 20px;">
+          Yes, Delete Entry
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating 10-Second Undo Notification -->
+  <div id="undoToast" style="display:none; position:fixed; bottom:25px; left:50%; transform:translateX(-50%); background:#0f2217; border:1.5px solid var(--gold-primary); color:#fff; padding:12px 24px; border-radius:30px; box-shadow:0 10px 30px rgba(0,0,0,0.85); z-index:9999; align-items:center; gap:16px; font-size:13px;">
+    <span id="undoToastText">Entry deleted.</span>
+    <button type="button" id="btnUndoDelete" style="background:var(--gold-primary); color:#000; font-weight:700; border:none; border-radius:16px; padding:6px 16px; cursor:pointer; font-size:12px;">
+      ↺ UNDO (<span id="undoCountdown">10</span>s)
+    </button>
   </div>
 
   <!-- Supabase Settings / Connector Modal -->
@@ -245,40 +272,8 @@
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal (Prevents Accidental Deletes) -->
-  <div class="modal-backdrop" id="confirmDeleteModal">
-    <div class="modal-box" style="max-width:440px; text-align:center;">
-      <div style="font-size:44px; margin-bottom:12px;">⚠️</div>
-      <h3 style="font-family:var(--font-serif); color:#fff; font-size:20px; margin-bottom:8px;">Delete Participant Entry?</h3>
-      <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5; margin-bottom:20px;" id="deleteConfirmMessage">
-        Are you sure you want to delete this entry? This will remove the participant record from the database.
-      </p>
-      <div style="display:flex; gap:12px; justify-content:center;">
-        <button type="button" class="btn-nav-action btn-nav-outline" id="btnCancelDelete" style="padding:10px 22px; font-size:13px;">
-          Cancel
-        </button>
-        <button type="button" class="btn-nav-action" id="btnConfirmDelete" style="padding:10px 22px; font-size:13px; background:#dc2626; color:#fff; border:none; cursor:pointer;">
-          🗑️ Yes, Delete
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Undo Notification Toast -->
-  <div id="undoToastContainer" style="position:fixed; bottom:24px; right:24px; z-index:9999; display:none; background:#0c1912; border:1.5px solid var(--gold-primary); box-shadow:0 10px 30px rgba(0,0,0,0.85); border-radius:10px; padding:14px 20px; align-items:center; gap:16px; color:#fff;">
-    <div>
-      <strong style="color:var(--gold-100); display:block; font-size:13.5px;" id="undoToastText">Entry deleted</strong>
-      <div style="font-size:11.5px; color:#9ca3af;" id="undoCountdownText">Tap Undo within 10s to restore</div>
-    </div>
-    <button type="button" id="btnUndoDelete" class="btn-nav-action btn-nav-gold" style="padding:7px 16px; font-size:12px; font-weight:700;">
-      ↩️ Undo
-    </button>
-    <button type="button" id="btnCloseUndoToast" style="background:none; border:none; color:#9ca3af; font-size:18px; cursor:pointer; padding:0 4px;">&times;</button>
-  </div>
-
   <!-- Scripts -->
   <script src="supabase-config.js"></script>
-  <script src="poster-generator.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

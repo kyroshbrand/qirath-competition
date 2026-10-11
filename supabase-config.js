@@ -110,33 +110,12 @@ async function uploadToStorage(bucketName, file, folder = '') {
  */
 async function submitRegistrationToBackend(participantData) {
   if (isSupabaseConfigured()) {
-    let insertData = { ...participantData };
-    let { data, error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('participants')
-      .insert([insertData])
+      .insert([participantData])
       .select();
 
     if (error) {
-      // If schema does not yet have photo_url column, fallback gracefully by packing in maqam_style
-      if (error.message && error.message.includes('photo_url') && insertData.photo_url) {
-        const fallbackData = { ...insertData };
-        fallbackData.maqam_style = fallbackData.maqam_style 
-          ? `${fallbackData.maqam_style} | photo:${fallbackData.photo_url}`
-          : `photo:${fallbackData.photo_url}`;
-        delete fallbackData.photo_url;
-
-        const retry = await supabaseClient
-          .from('participants')
-          .insert([fallbackData])
-          .select();
-
-        if (retry.error) {
-          console.error('Database insert retry error:', retry.error);
-          throw retry.error;
-        }
-        return retry.data[0];
-      }
-
       console.error('Database insert error:', error);
       throw error;
     }
@@ -147,31 +126,6 @@ async function submitRegistrationToBackend(participantData) {
     localStore.unshift(participantData);
     saveLocalParticipants(localStore);
     return participantData;
-  }
-}
-
-/**
- * Delete a participant entry from database
- */
-async function deleteParticipantFromBackend(registrationId) {
-  if (isSupabaseConfigured()) {
-    const { data, error } = await supabaseClient
-      .from('participants')
-      .delete()
-      .eq('registration_id', registrationId)
-      .select();
-
-    if (error) {
-      console.error('Database delete error:', error);
-      throw error;
-    }
-    return (data && data[0]) ? data[0] : { registration_id: registrationId };
-  } else {
-    let list = getLocalParticipants();
-    const deleted = list.find(p => p.registration_id === registrationId);
-    list = list.filter(p => p.registration_id !== registrationId);
-    saveLocalParticipants(list);
-    return deleted || { registration_id: registrationId };
   }
 }
 
@@ -200,14 +154,7 @@ async function fetchParticipantsFromBackend(filters = {}) {
       console.error('Database query error:', error);
       throw error;
     }
-    const list = data || [];
-    return list.map(p => {
-      if (!p.photo_url && p.maqam_style && p.maqam_style.includes('photo:')) {
-        const match = p.maqam_style.match(/photo:(https?:\/\/[^\s|]+)/);
-        if (match) p.photo_url = match[1];
-      }
-      return p;
-    });
+    return data || [];
   } else {
     // Demo Mode: read from LocalStorage
     let list = getLocalParticipants();
@@ -246,6 +193,45 @@ async function updateParticipantInBackend(registrationId, updates) {
       return list[index];
     }
     throw new Error('Participant not found');
+  }
+}
+
+/**
+ * Delete a participant from database
+ */
+async function deleteParticipantFromBackend(registrationId) {
+  if (isSupabaseConfigured()) {
+    const { error } = await supabaseClient
+      .from('participants')
+      .delete()
+      .eq('registration_id', registrationId);
+
+    if (error) {
+      console.error('Database delete error:', error);
+      throw error;
+    }
+    return true;
+  } else {
+    let list = getLocalParticipants();
+    list = list.filter(p => p.registration_id !== registrationId);
+    saveLocalParticipants(list);
+    return true;
+  }
+}
+
+/**
+ * Safely delete an object from Supabase Storage
+ */
+async function deleteFromStorage(bucketName, pathOrUrl) {
+  if (!isSupabaseConfigured() || !pathOrUrl) return;
+  try {
+    let path = pathOrUrl;
+    if (path.includes(`/${bucketName}/`)) {
+      path = path.split(`/${bucketName}/`)[1];
+    }
+    await supabaseClient.storage.from(bucketName).remove([path]);
+  } catch (err) {
+    console.warn(`Could not remove ${pathOrUrl} from ${bucketName}:`, err);
   }
 }
 
