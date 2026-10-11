@@ -57,34 +57,6 @@
       border: 1px solid rgba(212, 167, 59, 0.25);
     }
 
-    /* Top Utility Bar */
-    .utility-bar {
-      background: #040705;
-      padding: 10px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(212, 167, 59, 0.2);
-      font-size: 12px;
-    }
-    .utility-bar a {
-      color: var(--gold2);
-      text-decoration: none;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      transition: all 0.2s;
-    }
-    .utility-bar a:hover {
-      color: #fff;
-    }
-    .admin-link {
-      background: rgba(212, 167, 59, 0.15);
-      border: 1px solid var(--gold);
-      padding: 4px 10px;
-      border-radius: 20px;
-      color: var(--gold2) !important;
-    }
-
     /* Top Hero Header */
     .top {
       background: var(--black);
@@ -94,15 +66,15 @@
       position: relative;
     }
     .hero {
-      height: 280px;
-      background: #000 url('assets/hero_bg.jpg') 50% 30% / cover no-repeat;
+      height: 320px;
+      background: #000 url('assets/hero_bg.jpg') center 20% / cover no-repeat;
       position: relative;
     }
     .hero:after {
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(6, 10, 8, 0.35) 0%, rgba(6, 10, 8, 0) 35%, rgba(6, 10, 8, 0.8) 75%, var(--black) 100%);
+      background: linear-gradient(to bottom, rgba(6, 10, 8, 0.2) 0%, rgba(6, 10, 8, 0.1) 40%, rgba(6, 10, 8, 0.8) 78%, var(--black) 100%);
     }
 
     .arabic-calligraphy {
@@ -118,20 +90,23 @@
 
     .logo-container {
       position: relative;
-      margin-top: -85px;
+      margin-top: -95px;
       z-index: 4;
       display: inline-block;
     }
     .logo {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      border: 3px solid var(--gold);
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 167, 59, 0.35);
-      object-fit: cover;
+      width: 175px;
+      max-width: 80vw;
+      height: auto;
+      object-fit: contain;
       display: block;
       margin: 0 auto;
-      background: #000;
+      filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 20px rgba(212, 167, 59, 0.45));
+      transition: transform 0.3s ease, filter 0.3s ease;
+    }
+    .logo:hover {
+      transform: scale(1.03);
+      filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 1)) drop-shadow(0 0 30px rgba(212, 167, 59, 0.7));
     }
 
     .badge {
@@ -493,12 +468,12 @@
       padding: 30px 10px;
     }
     .ok img {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 2px solid var(--gold);
+      width: 140px;
+      height: auto;
+      max-height: 120px;
       margin: 0 auto 16px;
-      object-fit: cover;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
     }
     .ok h2 {
       font: 700 24px var(--serif);
@@ -565,18 +540,12 @@
 
 <div class="wrap">
 
-  <!-- Top Utilities -->
-  <div class="utility-bar">
-    <a href="#track" id="openTrackModal">🔍 Track Entry Status</a>
-    <a href="admin.html" class="admin-link">🔒 Admin Portal (RP26)</a>
-  </div>
-
   <!-- Hero Top Section -->
   <div class="top">
     <div class="hero" role="img" aria-label="Reid and Premium groom studio competition background"></div>
     
     <div class="logo-container">
-      <img class="logo" alt="Reid &amp; Premium Groom Studio" src="assets/logo.jpg">
+      <img class="logo" alt="Reid &amp; Premium Groom Studio" src="assets/logo.png">
     </div>
 
     <div class="arabic-calligraphy">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
@@ -879,7 +848,7 @@ $("f").addEventListener("submit", async e => {
     // Success Screen
     $("f").innerHTML = `
       <div class="ok">
-        <img alt="Reid & Premium" src="assets/logo.jpg">
+        <img alt="Reid & Premium" src="assets/logo.png">
         <h2>Entry Received</h2>
         <div class="ok-badge">${regId}</div>
         <p style="font-size:14px; color:#444; line-height:1.6; margin-bottom:14px;">
@@ -902,12 +871,18 @@ $("f").addEventListener("submit", async e => {
   }
 });
 
-// Track modal interactions
-$("openTrackModal").addEventListener("click", e => {
-  e.preventDefault();
-  $("trackModal").classList.add("open");
-});
-$("closeTrackModal").addEventListener("click", () => $("trackModal").classList.remove("open"));
+// Track modal interactions (if available)
+const openTrackBtn = $("openTrackModal");
+if (openTrackBtn) {
+  openTrackBtn.addEventListener("click", e => {
+    e.preventDefault();
+    $("trackModal").classList.add("open");
+  });
+}
+const closeTrackBtn = $("closeTrackModal");
+if (closeTrackBtn) {
+  closeTrackBtn.addEventListener("click", () => $("trackModal").classList.remove("open"));
+}
 
 $("trackBtn").addEventListener("click", async () => {
   const val = $("trackInput").value.trim();

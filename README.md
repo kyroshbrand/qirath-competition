@@ -127,9 +127,9 @@ project J/
 ├── supabase-config.js    # Supabase Client Init, Storage Uploads & Demo Fallback
 ├── supabase_schema.sql   # Complete Supabase PostgreSQL Schema & Storage Policies
 ├── assets/
-│   ├── hero_bg.jpg       # Royal Islamic Grand Championship Background
+│   ├── hero_bg.jpg       # Reid & Premium Groom Photoshoot Background
 │   ├── emblem.jpg        # 3D Gold Qirath Royal Competition Emblem
-│   └── logo.jpg          # Reid & Premium Groom Studio Luxury Monogram Logo
+│   └── logo.png          # Reid & Premium Crown & Monogram Studio Logo
 └── README.md             # Complete Setup, Backend & GitHub Deployment Guide
 ```
 
