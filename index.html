@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All Karnataka Qirath Grand Competition 2026 | Reid & Premium Groom Studio</title>
+  <meta name="description" content="Official State-Level All Karnataka Qirath Competition presented by Reid & Premium Groom Studio. Register your Quranic recitation entry across Puttur, Thokkotu, B.C Road, and Sullia branches.">
+  <meta name="keywords" content="Qirath Competition, Karnataka Qirath, Quran Recitation, Reid and Premium, Puttur, Thokkotu, BC Road, Sullia, Islamic Competition">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-bar">
+    <div class="container" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+      <div class="top-bar-left">
+        <span class="pulse-badge">
+          <span class="pulse-dot"></span> Official State Championship
+        </span>
+        <span style="display:none; @media(min-width:600px){display:inline;}">Open to all reciters across Karnataka</span>
+      </div>
+      <div class="top-bar-right">
+        <a href="#track" id="trackEntryBtn" class="top-nav-link">
+          🔍 Track Entry Status
+        </a>
+        <a href="admin.html" id="adminPortalBtn" class="admin-pill-btn">
+          🔒 Organizer Admin
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Luxury Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-wrap">
+      <a href="index.html" class="brand-identity" id="navBrandLogo">
+        <img src="assets/logo.jpg" alt="Reid & Premium Groom Studio Logo" class="brand-logo-img">
+        <div class="brand-titles">
+          <h2>REID &amp; PREMIUM</h2>
+          <span>The Ultimate Groom Studio</span>
+        </div>
+      </a>
+      <div class="nav-actions">
+        <a href="#guidelines" class="btn-nav-action btn-nav-outline" style="display:none; @media(min-width:768px){display:inline-flex;}">
+          Rules &amp; Awards
+        </a>
+        <a href="#registration" class="btn-nav-action btn-nav-gold">
+          ✍️ Register Entry
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Grand Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-inner">
+      <div class="arabic-bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
+      <div class="quran-ayah-tag">"وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا" — And recite the Qur'an with measured recitation (Al-Muzzammil 73:4)</div>
+
+      <div class="official-emblem-wrap">
+        <img src="assets/emblem.jpg" alt="Qirath Competition Royal Gold Emblem" class="official-emblem-img">
+      </div>
+
+      <div class="hero-state-badge">
+        ✦ State-Wide Grand Championship ✦
+      </div>
+
+      <h1 class="hero-title">
+        All Karnataka
+        <span>Qirath Competition</span>
+      </h1>
+
+      <div class="hero-presenter">
+        Presented by <strong>Reid &amp; Premium – The Ultimate Groom Studio</strong>
+      </div>
+
+      <p class="hero-desc">
+        A prestigious platform celebrating the divine beauty, maqamat, and tajweed of the Holy Quran. Open to aspiring and accomplished reciters from every district across Karnataka.
+      </p>
+
+      <!-- Branches Badge Strip -->
+      <div class="branch-strip">
+        <span class="branch-pill">📍 Puttur Branch</span>
+        <span class="branch-pill">📍 Thokkotu Branch</span>
+        <span class="branch-pill">📍 B.C Road Branch</span>
+        <span class="branch-pill">📍 Sullia Branch</span>
+      </div>
+
+      <!-- Quick Stats / Highlights -->
+      <div class="hero-stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">₹ 1,00,000+</div>
+          <div class="stat-label">Grand Prize Pool &amp; Trophies</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">3 Categories</div>
+          <div class="stat-label">Junior, Senior &amp; Open</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">Certified</div>
+          <div class="stat-label">Official State Merit Certificate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">Grand Stage</div>
+          <div class="stat-label">In-Person State Grand Finale</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guidelines & Categories Section -->
+  <section class="info-section" id="guidelines">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Competition Overview</span>
+        <h2 class="section-title">Rules &amp; Judging Criteria</h2>
+      </div>
+
+      <div class="guidelines-grid">
+        <div class="guide-card">
+          <div class="guide-card-icon">👥</div>
+          <h3>Age Groups &amp; Categories</h3>
+          <p>Participants are categorized based on their verified age as per their Aadhaar card:</p>
+          <ul>
+            <li><strong>Junior Category:</strong> Age 5 to 12 Years</li>
+            <li><strong>Senior Category:</strong> Age 13 to 18 Years</li>
+            <li><strong>Open Category:</strong> Age 19 Years and Above</li>
+          </ul>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-icon">🎙️</div>
+          <h3>Recitation Video Guidelines</h3>
+          <p>Follow these recording criteria to ensure your video submission qualifies:</p>
+          <ul>
+            <li>Video length: 2 to 4 minutes of uninterrupted recitation</li>
+            <li>Face &amp; mouth movements must be clearly visible</li>
+            <li>Clear audio without excessive background music or artificial echo</li>
+            <li>Recite any Surah / Ayah with proper Waqf and Tajweed</li>
+          </ul>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-icon">⚖️</div>
+          <h3>Judging Parameters (100 Marks)</h3>
+          <p>Evaluated by recognized Islamic scholars and Qaris:</p>
+          <ul>
+            <li><strong>Tajweed &amp; Makharij:</strong> 40 Points</li>
+            <li><strong>Husn al-Sawt (Voice &amp; Tone):</strong> 30 Points</li>
+            <li><strong>Waqf, Ibtida &amp; Rhythm:</strong> 20 Points</li>
+            <li><strong>Demeanor &amp; Adab:</strong> 10 Points</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Registration Portal Section -->
+  <section class="registration-wrap" id="registration">
+    <div class="container">
+      <div class="reg-card">
+        <!-- Card Header -->
+        <div class="reg-card-header">
+          <h2>Official Registration Portal</h2>
+          <p>Complete all 5 simple sections below. Submissions are reviewed directly by the organizing committee.</p>
+
+          <!-- Step Indicators -->
+          <div class="form-step-indicators">
+            <div class="step-item active" id="stepIndicator1">
+              <div class="step-bubble">1</div>
+              <span>Identity</span>
+            </div>
+            <div class="step-item active" id="stepIndicator2">
+              <div class="step-bubble">2</div>
+              <span>Recitation</span>
+            </div>
+            <div class="step-item active" id="stepIndicator3">
+              <div class="step-bubble">3</div>
+              <span>Aadhaar</span>
+            </div>
+            <div class="step-item active" id="stepIndicator4">
+              <div class="step-bubble">4</div>
+              <span>Follow Proof</span>
+            </div>
+            <div class="step-item active" id="stepIndicator5">
+              <div class="step-bubble">5</div>
+              <span>Confirm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registration Form -->
+        <form id="qirathForm" class="reg-form-body" novalidate>
+          
+          <!-- Section 1: Participant Identity -->
+          <div class="form-section-title">1. Participant Details</div>
+          
+          <div class="form-group">
+            <label class="form-label" for="fullName">Full Name (As per Aadhaar Card)<u>*</u></label>
+            <input type="text" id="fullName" class="form-control" placeholder="e.g. Mohammed Farooq" autocomplete="name" required>
+            <div class="error-msg" id="err_fullName"></div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="age">Age<u>*</u></label>
+              <input type="number" id="age" class="form-control" placeholder="e.g. 15" min="5" max="99" required>
+              <div id="categoryBadge" style="font-size: 12px; color: var(--gold-300); margin-top: 5px; font-weight: 600;"></div>
+              <input type="hidden" id="category" value="">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="phone">Calling Phone Number<u>*</u></label>
+              <div class="input-phone-group">
+                <span class="phone-prefix">+91</span>
+                <input type="tel" id="phone" class="form-control" placeholder="10-digit mobile number" maxlength="10" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="whatsapp">WhatsApp Number<u>*</u></label>
+              <div class="input-phone-group">
+                <span class="phone-prefix">+91</span>
+                <input type="tel" id="whatsapp" class="form-control" placeholder="10-digit WhatsApp number" maxlength="10" required>
+              </div>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin-top:6px; cursor:pointer;">
+                <input type="checkbox" id="sameAsPhone" style="accent-color:var(--gold-primary);"> Same as calling number
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="district">District / City<u>*</u></label>
+              <input type="text" id="district" class="form-control" placeholder="e.g. Dakshina Kannada, Udupi, Bengaluru" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="address">Full Residential Address<u>*</u></label>
+            <textarea id="address" class="form-control" placeholder="House name/no, street, town, pincode" required></textarea>
+          </div>
+
+          <!-- Section 2: Branch Selection -->
+          <div class="form-section-title">2. Nearest Reid &amp; Premium Branch</div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+            Select the nearest Reid &amp; Premium Studio location for your regional coordination and prize distribution:
+          </p>
+          <div class="branch-grid" id="branchGrid">
+            <!-- Rendered by JS -->
+          </div>
+          <div style="height:20px;"></div>
+
+          <!-- Section 3: Recitation & Video File -->
+          <div class="form-section-title">3. Recitation &amp; Video Submission</div>
+          
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="surah">Surah &amp; Ayah Recited<u>*</u></label>
+              <input type="text" id="surah" class="form-control" placeholder="e.g. Surah Al-Mulk (Ayah 1 to 15)" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="maqam">Maqam / Recitation Style (Optional)</label>
+              <select id="maqam" class="form-control">
+                <option value="Standard Traditional">Standard Traditional Recitation</option>
+                <option value="Maqam Bayati">Maqam Bayati (مقام بياتي)</option>
+                <option value="Maqam Hijaz">Maqam Hijaz (مقام حجاز)</option>
+                <option value="Maqam Nahawand">Maqam Nahawand (مقام نهاوند)</option>
+                <option value="Maqam Rast">Maqam Rast (مقام راست)</option>
+                <option value="Maqam Sika">Maqam Sika (مقام سيكاه)</option>
+                <option value="Maqam Saba">Maqam Saba (مقام صبا)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Upload Your Qirath Video / Audio File<u>*</u></label>
+            <label class="upload-card-box" id="videoBox">
+              <input type="file" id="videoInput" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.mp3,.m4a,.wav,.aac,.ogg" required>
+              <div class="upload-icon">📹</div>
+              <strong>Tap to Select Video Recording</strong>
+              <small>Supported formats: MP4, MOV, MKV, WebM, 3GP, MP3, Audio files</small>
+            </label>
+            <div class="file-preview-area" id="videoPreview"></div>
+          </div>
+
+          <!-- Section 4: Aadhaar Verification -->
+          <div class="form-section-title">4. Identity Verification</div>
+          
+          <div class="form-group">
+            <label class="form-label">Upload Aadhaar Card Photo<u>*</u></label>
+            <label class="upload-card-box" id="aadhaarBox">
+              <input type="file" id="aadhaarInput" accept="image/*,.pdf" required>
+              <div class="upload-icon">🪪</div>
+              <strong>Tap to Upload Clear Aadhaar Photo</strong>
+              <small>Required to verify participant age and Karnataka residency. Handled with confidentiality.</small>
+            </label>
+            <div class="file-preview-area" id="aadhaarPreview"></div>
+          </div>
+
+          <!-- Section 5: Social Media Unlock Verification -->
+          <div class="form-section-title">5. Follow Community &amp; Unlock</div>
+          
+          <div class="social-unlock-box">
+            <div class="social-unlock-header">
+              <h3><span>🔒</span> Follow Official Pages to Unlock Submit</h3>
+              <p>Follow both official channels, then upload a screenshot of each showing "Following" / "Joined" to enable registration.</p>
+            </div>
+
+            <div class="social-grid">
+              <!-- Instagram Card -->
+              <div class="social-card">
+                <a href="https://www.instagram.com/reid_and_premium?vrfl=MTNqd2Qwb25mb2Fidg%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer" class="social-btn instagram-btn">
+                  📸 Follow @reid_and_premium
+                </a>
+                <label class="upload-card-box" id="igShotBox" style="padding:14px;">
+                  <input type="file" id="igShotInput" accept="image/*" required>
+                  <strong>Upload Instagram Screenshot<u>*</u></strong>
+                  <small>Screenshot showing you follow @reid_and_premium</small>
+                </label>
+                <div class="file-preview-area" id="igShotPreview"></div>
+              </div>
+
+              <!-- WhatsApp Channel Card -->
+              <div class="social-card">
+                <a href="https://whatsapp.com/channel/0029VbE9UQV5kg72cGyOMm3T" target="_blank" rel="noopener noreferrer" class="social-btn whatsapp-btn">
+                  💬 Join WhatsApp Official Channel
+                </a>
+                <label class="upload-card-box" id="waShotBox" style="padding:14px;">
+                  <input type="file" id="waShotInput" accept="image/*" required>
+                  <strong>Upload WhatsApp Screenshot<u>*</u></strong>
+                  <small>Screenshot showing you joined the channel</small>
+                </label>
+                <div class="file-preview-area" id="waShotPreview"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Declaration Terms -->
+          <div class="terms-checkbox-wrap">
+            <input type="checkbox" id="termsAgree" required>
+            <label for="termsAgree">
+              I officially declare that the recitation video and identity details provided belong to the participant and are authentic. I agree to Reid &amp; Premium Groom Studio using this entry exclusively for evaluating this competition.
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="submitBtn" class="btn-submit-entry" disabled>
+            <span>📜</span> Submit Official Entry
+          </button>
+          
+          <div class="submit-hint-msg" id="submitHint">
+            Upload both follow screenshots to enable Submit
+          </div>
+
+          <!-- Upload Progress Bar -->
+          <div class="upload-progress-container" id="uploadProgressBox">
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; color:var(--gold-200);">
+              <span>Uploading media securely…</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Track Registration Modal -->
+  <div class="modal-backdrop" id="trackModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🔍 Track Registration Status</h3>
+        <button class="modal-close-btn" id="closeTrackModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:16px;">
+          Enter your unique Registration ID (e.g. <code>AKQC-2026-1042</code>) or your 10-digit registered phone number:
+        </p>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+          <input type="text" id="trackSearchInput" class="form-control" placeholder="Registration ID or Phone number">
+          <button type="button" class="btn-nav-action btn-nav-gold" id="btnDoTrack">Check</button>
+        </div>
+        <div id="trackResultBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin PIN Authentication Modal -->
+  <div class="modal-backdrop" id="adminAuthModal">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>🔒 Organizer Portal Login</h3>
+        <button class="modal-close-btn" id="closeAdminAuthModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:16px;">
+          Please enter the organizer PIN to access the entry management dashboard and review submissions:
+        </p>
+        <div style="margin-bottom:16px;">
+          <input type="password" id="adminPinInput" class="form-control" placeholder="Enter Admin PIN (Default: admin2026)" autofocus>
+          <div class="error-msg" id="adminPinError"></div>
+        </div>
+        <button type="button" id="btnSubmitAdminPin" class="btn-submit-entry" style="padding:14px;">
+          Unlock Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registration Success Receipt Slip Modal -->
+  <div class="modal-backdrop" id="receiptModal">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="modal-header">
+        <h3>Official Digital Hall Ticket</h3>
+        <button class="modal-close-btn" onclick="document.getElementById('receiptModal').classList.remove('open')">&times;</button>
+      </div>
+      <div class="modal-body" id="receiptSlipContent">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-branches">
+        Puttur <span>•</span> Thokkotu <span>•</span> B.C Road <span>•</span> Sullia
+      </div>
+      <div class="footer-brand">
+        REID &amp; PREMIUM GROOM STUDIO
+      </div>
+      <p style="font-size:12px; color:#7e796e; margin-top:8px;">
+        All Karnataka Qirath Grand Competition 2026. All rights reserved. Presented exclusively for community empowerment &amp; excellence in Quran recitation.
+      </p>
+      <div style="margin-top:14px;">
+        <a href="admin.html" style="color:var(--gold-dark); text-decoration:none; font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase;">
+          Organizer Management Portal &rarr;
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

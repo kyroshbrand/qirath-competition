@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Organizer Dashboard | All Karnataka Qirath Competition</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-shell">
+
+  <!-- Admin Header Navigation -->
+  <nav class="admin-nav">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+        <img src="assets/logo.jpg" alt="Logo" style="width:40px; height:40px; border-radius:10px; border:1px solid var(--gold-primary);">
+        <div>
+          <h1 style="font-family:var(--font-serif); font-size:17px; color:var(--gold-100); line-height:1.2; text-transform:uppercase;">
+            Qirath Admin Portal
+          </h1>
+          <span style="font-size:11px; color:var(--text-muted); letter-spacing:0.12em; text-transform:uppercase;">
+            Reid &amp; Premium Groom Studio
+          </span>
+        </div>
+      </a>
+      <span id="backendStatusBadge" class="status-pill pending" style="margin-left:10px; cursor:pointer;" title="Click Supabase Settings to configure">
+        🟡 Checking Connection…
+      </span>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button type="button" class="btn-nav-action btn-nav-outline" id="btnOpenSupabaseSettings" style="font-size:12px; padding:7px 14px;">
+        ⚙️ Supabase Settings
+      </button>
+      <button type="button" class="btn-nav-action btn-nav-gold" id="btnExportCsv" style="font-size:12px; padding:7px 14px;">
+        📥 Export CSV
+      </button>
+      <a href="index.html" class="btn-nav-action btn-nav-outline" style="font-size:12px; padding:7px 14px;">
+        🌐 View Public Form
+      </a>
+      <button type="button" class="btn-nav-action" style="font-size:12px; padding:7px 12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3);" onclick="sessionStorage.removeItem('AKQC_ADMIN_LOGGED_IN'); window.location.href='index.html';">
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="container" style="max-width:1180px; padding:30px 20px;">
+    
+    <!-- Page Title & Quick Refresh -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <div>
+        <h2 style="font-family:var(--font-serif); font-size:26px; color:#fff; text-transform:uppercase; letter-spacing:0.04em;">
+          Participant Entries &amp; Assessment
+        </h2>
+        <p style="color:var(--text-muted); font-size:13.5px; margin-top:4px;">
+          Review recitation videos, check Aadhaar residency, inspect follow proofs, grade entries, and notify reciters.
+        </p>
+      </div>
+      <div>
+        <button type="button" class="btn-nav-action btn-nav-outline" id="btnRefreshData">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Cards Row -->
+    <div class="admin-metrics-row">
+      <div class="admin-metric-card gold-border">
+        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:var(--gold-primary); font-weight:700;">Total Registrations</span>
+        <div class="count" id="statTotalCount">0</div>
+        <small style="color:var(--text-muted); font-size:11.5px;">All branches combined</small>
+      </div>
+      <div class="admin-metric-card">
+        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:#facc15; font-weight:700;">Pending Review</span>
+        <div class="count" id="statPendingCount" style="color:#facc15;">0</div>
+        <small style="color:var(--text-muted); font-size:11.5px;">Awaiting video evaluation</small>
+      </div>
+      <div class="admin-metric-card">
+        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:#4ade80; font-weight:700;">Approved Entries</span>
+        <div class="count" id="statApprovedCount" style="color:#4ade80;">0</div>
+        <small style="color:var(--text-muted); font-size:11.5px;">Verified &amp; qualified</small>
+      </div>
+      <div class="admin-metric-card">
+        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:var(--gold-200); font-weight:700;">Finale Shortlist</span>
+        <div class="count" id="statShortlistCount" style="color:var(--gold-200);">0</div>
+        <small style="color:var(--text-muted); font-size:11.5px;">Selected for stage rounds</small>
+      </div>
+    </div>
+
+    <!-- Branch Distribution Strip -->
+    <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px 20px; margin-bottom:28px; display:flex; flex-wrap:wrap; justify-content:space-around; gap:16px;">
+      <div style="text-align:center;">
+        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Puttur Branch</span>
+        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Puttur">0</div>
+      </div>
+      <div style="text-align:center;">
+        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Thokkotu Branch</span>
+        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Thokkotu">0</div>
+      </div>
+      <div style="text-align:center;">
+        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 B.C Road Branch</span>
+        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_BCRoad">0</div>
+      </div>
+      <div style="text-align:center;">
+        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Sullia Branch</span>
+        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Sullia">0</div>
+      </div>
+    </div>
+
+    <!-- Search & Filters Toolbar -->
+    <div class="table-toolbar">
+      <div class="search-input-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="tableSearchInput" placeholder="Search by name, ID (e.g. AKQC-2026), phone, or Surah...">
+      </div>
+
+      <div class="filter-group">
+        <select id="filterBranch" class="filter-select">
+          <option value="All">All Branches</option>
+          <option value="Puttur">Puttur</option>
+          <option value="Thokkotu">Thokkotu</option>
+          <option value="B.C Road">B.C Road</option>
+          <option value="Sullia">Sullia</option>
+        </select>
+
+        <select id="filterStatus" class="filter-select">
+          <option value="All">All Statuses</option>
+          <option value="Pending Review">Pending Review</option>
+          <option value="Approved">Approved</option>
+          <option value="Shortlisted">Shortlisted</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+
+        <select id="filterCategory" class="filter-select">
+          <option value="All">All Categories</option>
+          <option value="Junior (5 - 12 yrs)">Junior (5 - 12 yrs)</option>
+          <option value="Senior (13 - 18 yrs)">Senior (13 - 18 yrs)</option>
+          <option value="Open (19+ yrs)">Open (19+ yrs)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Participants Table -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Reg ID &amp; Date</th>
+            <th>Participant</th>
+            <th>Branch &amp; Area</th>
+            <th>Contact</th>
+            <th>Recitation</th>
+            <th>Status &amp; Score</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="participantsTableBody">
+          <!-- Rows rendered by admin.js -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State Notice -->
+    <div id="emptyStateNotice" style="display:none; text-align:center; padding:50px 20px; background:var(--bg-card); border-radius:var(--radius-md); border:1px solid var(--border-subtle); margin-top:20px;">
+      <div style="font-size:36px; margin-bottom:10px;">📋</div>
+      <h3 style="color:#fff; font-size:18px;">No participants match this filter</h3>
+      <p style="color:var(--text-muted); font-size:13.5px; margin-top:6px;">Try clearing your search keyword or switching branch filter.</p>
+    </div>
+
+  </main>
+
+  <!-- Detailed Review Dossier Inspector Modal -->
+  <div class="modal-backdrop" id="reviewDossierModal">
+    <div class="modal-box" style="max-width:880px; max-height:92vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3 id="dossierModalTitle">🔍 Participant Review Dossier</h3>
+        <button class="modal-close-btn" onclick="document.getElementById('reviewDossierModal').classList.remove('open')">&times;</button>
+      </div>
+      <div class="modal-body" id="dossierModalContent">
+        <!-- Rendered by admin.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase Settings / Connector Modal -->
+  <div class="modal-backdrop" id="supabaseSettingsModal">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-header">
+        <h3>⚙️ Supabase Backend Settings</h3>
+        <button class="modal-close-btn" id="closeSupabaseSettingsModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:16px;">
+          Paste your Supabase Project credentials below to connect this web application directly to your live Supabase database and storage buckets:
+        </p>
+
+        <div style="margin-bottom:16px;">
+          <label class="form-label" for="supabaseUrlInput">Supabase Project URL</label>
+          <input type="text" id="supabaseUrlInput" class="form-control" placeholder="https://your-project-ref.supabase.co">
+          <small style="color:var(--text-muted); font-size:11.5px; display:block; margin-top:4px;">
+            Found in Supabase Project Settings &rarr; API &rarr; Project URL
+          </small>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="form-label" for="supabaseKeyInput">Supabase Anon Public API Key</label>
+          <input type="text" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+          <small style="color:var(--text-muted); font-size:11.5px; display:block; margin-top:4px;">
+            Found in Supabase Project Settings &rarr; API &rarr; Project API keys (anon public)
+          </small>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label class="form-label" for="supabasePinInput">Organizer Admin PIN</label>
+          <input type="password" id="supabasePinInput" class="form-control" placeholder="admin2026">
+          <small style="color:var(--text-muted); font-size:11.5px; display:block; margin-top:4px;">
+            The secret PIN required to access this admin management dashboard.
+          </small>
+        </div>
+
+        <div style="background:rgba(212, 167, 59, 0.08); border:1px solid var(--border-gold); padding:12px; border-radius:var(--radius-sm); margin-bottom:20px; font-size:12px; color:var(--text-gold); line-height:1.5;">
+          💡 <strong>Tip:</strong> Make sure you have run the database setup script in Supabase! Copy the SQL from <code>supabase_schema.sql</code> into your Supabase SQL Editor and click Run.
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn-submit-entry" id="btnSaveSupabaseConfig" style="flex:2; padding:13px;">
+            💾 Save &amp; Connect Live
+          </button>
+          <button type="button" class="btn-nav-action btn-nav-outline" id="btnResetToDemo" style="flex:1; justify-content:center;">
+            Reset Demo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="supabase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
