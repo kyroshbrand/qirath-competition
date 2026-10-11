@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Check session authorization
   if (sessionStorage.getItem('AKQC_ADMIN_LOGGED_IN') !== 'true') {
     // If not logged in, prompt or redirect
-    const pin = prompt("Enter Admin Access PIN (Default: admin2026):");
-    const validPin = SUPABASE_CONFIG.adminPin || "admin2026";
-    if (pin === validPin || pin === "admin2026") {
+    const pin = prompt("Enter Admin Access PIN (Password: RP26):");
+    const validPin = SUPABASE_CONFIG.adminPin || "RP26";
+    if (pin === validPin || pin === "RP26") {
       sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
     } else {
       alert("Unauthorized access. Redirecting to home page.");
@@ -493,7 +493,7 @@ function initSupabaseSettingsModal() {
     openBtn.addEventListener('click', () => {
       if (urlInput) urlInput.value = localStorage.getItem('AKQC_SUPABASE_URL') || '';
       if (keyInput) keyInput.value = localStorage.getItem('AKQC_SUPABASE_ANON_KEY') || '';
-      if (pinInput) pinInput.value = localStorage.getItem('AKQC_ADMIN_PIN') || 'admin2026';
+      if (pinInput) pinInput.value = localStorage.getItem('AKQC_ADMIN_PIN') || 'RP26';
       modal.classList.add('open');
     });
   }
@@ -511,7 +511,7 @@ function initSupabaseSettingsModal() {
     saveBtn.addEventListener('click', async () => {
       const url = urlInput.value.trim();
       const key = keyInput.value.trim();
-      const pin = pinInput.value.trim() || 'admin2026';
+      const pin = pinInput.value.trim() || 'RP26';
 
       if (!url || !key) {
         alert("Please enter both Supabase Project URL and Anon Key.");

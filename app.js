@@ -454,12 +454,12 @@ function initAdminAuthModal() {
   if (submitBtn && pinInput) {
     submitBtn.addEventListener('click', () => {
       const pin = pinInput.value.trim();
-      const currentPin = SUPABASE_CONFIG.adminPin || "admin2026";
-      if (pin === currentPin || pin === "admin2026") {
+      const currentPin = SUPABASE_CONFIG.adminPin || "RP26";
+      if (pin === currentPin || pin === "RP26") {
         sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
         window.location.href = 'admin.html';
       } else {
-        if (errorMsg) errorMsg.textContent = "Incorrect PIN code. Default is: admin2026";
+        if (errorMsg) errorMsg.textContent = "Incorrect PIN code. Password is: RP26";
       }
     });
     pinInput.addEventListener('keydown', (e) => {

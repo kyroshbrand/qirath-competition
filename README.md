@@ -26,7 +26,7 @@ An ultra-premium, official state-level Quranic Recitation (Qirath) Competition p
 - **Track Status**: Live search modal where participants can check their review status using their phone number or Registration ID.
 
 ### 2. "Easy to Manage" Organizer Admin Dashboard (`admin.html`)
-- **Secure PIN Access**: Protected by an Organizer PIN (Default: `admin2026`).
+- **Secure PIN Access**: Protected by an Organizer PIN (Password: `RP26`).
 - **Live Metrics Counter**: Real-time counts for Total Registrations, Pending Reviews, Approved Entries, Shortlisted for Finale, and distribution across all 4 branches.
 - **Comprehensive Filter & Search**: Search by name, registration ID, mobile, or surah. Filter by Branch, Status, and Category.
 - **Interactive Review Dossier**:
@@ -70,7 +70,7 @@ This project connects directly to **Supabase** for database records and file sto
      const SUPABASE_CONFIG = {
        url: "https://your-project-id.supabase.co",
        anonKey: "eyJhbGciOiJIUzI1NiIsIn...",
-       adminPin: "admin2026"
+       adminPin: "RP26"
      };
      ```
 

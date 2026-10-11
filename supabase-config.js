@@ -16,7 +16,7 @@ const SUPABASE_CONFIG = {
   anonKey: window.localStorage.getItem('AKQC_SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBza3hsc3pzcnVrcGR1eGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MDAxMjQsImV4cCI6MjEwNzI3NjEyNH0.uO-rdd7QHqCds9-SB-K4aT_kInqu0F4FK1dBxQgAJLU",
 
   // Default admin PIN for accessing the management dashboard
-  adminPin: window.localStorage.getItem('AKQC_ADMIN_PIN') || "admin2026"
+  adminPin: window.localStorage.getItem('AKQC_ADMIN_PIN') || "RP26"
 };
 
 let supabaseClient = null;
