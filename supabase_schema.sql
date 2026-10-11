@@ -113,6 +113,25 @@ ON storage.objects FOR SELECT
 TO public 
 USING (bucket_id = 'follow-proofs');
 
+-- Storage Deletion Policies (For Admin cleanup)
+DROP POLICY IF EXISTS "Allow delete from qirath-videos" ON storage.objects;
+CREATE POLICY "Allow delete from qirath-videos" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id = 'qirath-videos');
+
+DROP POLICY IF EXISTS "Allow delete from aadhaar-cards" ON storage.objects;
+CREATE POLICY "Allow delete from aadhaar-cards" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id = 'aadhaar-cards');
+
+DROP POLICY IF EXISTS "Allow delete from follow-proofs" ON storage.objects;
+CREATE POLICY "Allow delete from follow-proofs" 
+ON storage.objects FOR DELETE 
+TO public 
+USING (bucket_id = 'follow-proofs');
+
 -- ====================================================================
 -- SUCCESS: Schema and Storage Buckets setup is complete!
 -- ====================================================================

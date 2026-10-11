@@ -168,9 +168,14 @@ function renderTableRows() {
           ${p.judge_score > 0 ? `<div style="font-size:11.5px; color:var(--gold-300); margin-top:3px; font-weight:700;">Score: ${p.judge_score}/100</div>` : ''}
         </td>
         <td>
-          <button class="btn-nav-action btn-nav-gold" style="padding:6px 14px; font-size:12px;" onclick="openReviewDossier('${p.registration_id}')">
-            🔍 Review Dossier
-          </button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="btn-nav-action btn-nav-gold" style="padding:6px 12px; font-size:12px;" onclick="openReviewDossier('${p.registration_id}')">
+              🔍 Review
+            </button>
+            <button class="btn-nav-action" style="padding:6px 10px; font-size:12px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#f87171; cursor:pointer;" title="Delete this entry and all files" onclick="deleteParticipantRecord('${p.registration_id}')">
+              🗑️
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -270,11 +275,23 @@ function openReviewDossier(regId) {
                 ▶️ Open / Play Video in New Tab
               </a>
               <small style="display:block; color:var(--text-muted); margin-top:10px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
+              <div style="margin-top:12px;">
+                <button type="button" class="btn-nav-action" style="padding:5px 12px; font-size:11px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#f87171; cursor:pointer;" onclick="deleteParticipantVideo('${participant.registration_id}')">
+                  🗑️ Clear Video Link
+                </button>
+              </div>
+            </div>
+          ` : participant.video_url ? `
+            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
+            <div style="padding:8px 12px; background:#07120a; display:flex; justify-content:space-between; align-items:center;">
+              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original</a>
+              <button type="button" class="btn-nav-action" style="padding:4px 10px; font-size:11px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.3); color:#f87171; cursor:pointer;" onclick="deleteParticipantVideo('${participant.registration_id}')">
+                🗑️ Delete Video File (Free Space)
+              </button>
             </div>
           ` : `
-            <video src="${participant.video_url}" controls style="width:100%; max-height:280px; display:block;" preload="metadata"></video>
-            <div style="padding:8px 12px; background:#07120a; text-align:right;">
-              <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original Video</a>
+            <div style="padding:24px 16px; text-align:center; background:#0a1710; color:var(--text-muted); font-size:13px;">
+              ⚠️ Recitation video file has been deleted to save storage space.
             </div>
           `}
         </div>
@@ -364,6 +381,16 @@ function openReviewDossier(regId) {
           <button class="btn-submit-entry" style="padding:12px; font-size:13px; background:#25d366; color:#06140b; border:none;" onclick="openWhatsAppChat('${participant.phone}', '${escapeHtml(participant.full_name)}', '${participant.registration_id}', '${participant.branch}', '${participant.status}')">
             📲 Send WhatsApp Status Update to Participant
           </button>
+
+          <!-- Danger Zone: Permanent Deletion -->
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(239, 68, 68, 0.25); text-align:center;">
+            <button class="btn-nav-action" style="width:100%; justify-content:center; padding:11px; font-size:12.5px; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; font-weight:700; cursor:pointer;" onclick="deleteParticipantRecord('${participant.registration_id}')">
+              🗑️ Permanently Delete Entry &amp; All Files
+            </button>
+            <small style="color:var(--text-muted); font-size:11px; display:block; margin-top:5px;">
+              Deletes video, Aadhaar, screenshots from Supabase Storage and removes database record.
+            </small>
+          </div>
         </div>
       </div>
     </div>
@@ -548,5 +575,65 @@ function initSupabaseSettingsModal() {
         await loadAndRenderParticipants();
       }
     });
+  }
+}
+
+// Delete just the recitation video file (frees up cloud storage)
+async function deleteParticipantVideo(registrationId) {
+  const participant = allParticipants.find(p => p.registration_id === registrationId);
+  if (!participant || !participant.video_url) {
+    alert("No video file attached to this participant.");
+    return;
+  }
+
+  const confirmed = confirm(`Are you sure you want to delete the recitation video file for ${participant.full_name} (${participant.registration_id})?\n\nThis will remove the file from Supabase Storage to free up space. The participant details and score will remain.`);
+  if (!confirmed) return;
+
+  try {
+    await deleteParticipantVideoFromBackend(registrationId, participant.video_url);
+    participant.video_url = '';
+    alert("✅ Recitation video file has been successfully deleted from storage.");
+    openReviewDossier(registrationId);
+    renderTableRows();
+  } catch (err) {
+    console.error("Delete video error:", err);
+    alert("Failed to delete video: " + err.message);
+  }
+}
+
+// Delete entire participant record and all storage files
+async function deleteParticipantRecord(registrationId) {
+  const participant = allParticipants.find(p => p.registration_id === registrationId);
+  if (!participant) return;
+
+  const confirmed = confirm(`⚠️ PERMANENT DELETION\n\nAre you sure you want to delete:\n• Name: ${participant.full_name}\n• ID: ${participant.registration_id}\n• Branch: ${participant.branch}\n\nThis will permanently delete the entry and all uploaded files (video, Aadhaar, proofs) from the database and storage.\n\nThis action CANNOT be undone.`);
+  if (!confirmed) return;
+
+  try {
+    const mediaUrls = {
+      video_url: participant.video_url,
+      aadhaar_url: participant.aadhaar_url,
+      ig_screenshot_url: participant.ig_screenshot_url,
+      wa_screenshot_url: participant.wa_screenshot_url
+    };
+
+    await deleteParticipantFromBackend(registrationId, mediaUrls);
+
+    // Remove from local array
+    allParticipants = allParticipants.filter(p => p.registration_id !== registrationId);
+
+    // Close modal if open
+    const modal = document.getElementById('reviewDossierModal');
+    if (modal) modal.classList.remove('open');
+    activeReviewParticipant = null;
+
+    // Refresh UI
+    renderStatsCounters(allParticipants);
+    renderTableRows();
+
+    alert(`✅ Participant ${participant.full_name} (${registrationId}) and all associated files have been permanently deleted.`);
+  } catch (err) {
+    console.error('Delete error:', err);
+    alert("Failed to delete entry: " + err.message);
   }
 }

@@ -219,6 +219,80 @@ async function trackParticipantInBackend(searchVal) {
   }
 }
 
+/**
+ * Helper to delete a single file from Supabase storage by its URL
+ */
+async function removeStorageFileByUrl(bucket, fullUrl) {
+  if (!isSupabaseConfigured() || !fullUrl || typeof fullUrl !== 'string') return;
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  if (!fullUrl.includes(marker)) return; // External link (Google Drive, YouTube, etc.)
+  try {
+    const rawPath = fullUrl.split(marker)[1];
+    if (rawPath) {
+      const cleanPath = decodeURIComponent(rawPath.split('?')[0]);
+      await supabaseClient.storage.from(bucket).remove([cleanPath]);
+      console.log(`🗑️ Removed file from ${bucket}: ${cleanPath}`);
+    }
+  } catch (err) {
+    console.warn(`Could not remove file from ${bucket}:`, err);
+  }
+}
+
+/**
+ * Delete participant recitation video file only (frees up storage)
+ */
+async function deleteParticipantVideoFromBackend(registrationId, videoUrl) {
+  if (isSupabaseConfigured()) {
+    await removeStorageFileByUrl('qirath-videos', videoUrl);
+    const { error } = await supabaseClient
+      .from('participants')
+      .update({ video_url: '' })
+      .eq('registration_id', registrationId);
+
+    if (error) throw error;
+    return true;
+  } else {
+    const list = getLocalParticipants();
+    const idx = list.findIndex(p => p.registration_id === registrationId);
+    if (idx !== -1) {
+      list[idx].video_url = '';
+      saveLocalParticipants(list);
+    }
+    return true;
+  }
+}
+
+/**
+ * Delete an entire participant entry and ALL associated storage files
+ */
+async function deleteParticipantFromBackend(registrationId, mediaUrls = {}) {
+  if (isSupabaseConfigured()) {
+    const { video_url, aadhaar_url, ig_screenshot_url, wa_screenshot_url } = mediaUrls;
+    await Promise.allSettled([
+      removeStorageFileByUrl('qirath-videos', video_url),
+      removeStorageFileByUrl('aadhaar-cards', aadhaar_url),
+      removeStorageFileByUrl('follow-proofs', ig_screenshot_url),
+      removeStorageFileByUrl('follow-proofs', wa_screenshot_url)
+    ]);
+
+    const { error } = await supabaseClient
+      .from('participants')
+      .delete()
+      .eq('registration_id', registrationId);
+
+    if (error) {
+      console.error('Failed to delete participant from database:', error);
+      throw error;
+    }
+    return true;
+  } else {
+    let list = getLocalParticipants();
+    list = list.filter(p => p.registration_id !== registrationId);
+    saveLocalParticipants(list);
+    return true;
+  }
+}
+
 // ====================================================================
 // LOCAL STORAGE MOCK DATA (Runs seamlessly before user connects Supabase)
 // ====================================================================
