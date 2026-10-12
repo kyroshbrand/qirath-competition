@@ -804,7 +804,7 @@
           <label class="file" id="l_video">
             <input id="video" type="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv,.mp3,.m4a,.wav,.aac,.ogg">
             <b>Tap to choose video / audio</b>
-            <small>Direct upload up to 45 MB</small>
+            <small>Direct upload up to 100 MB</small>
           </label>
           <div class="prev" id="p_video"></div>
           <div id="vid_warn" style="display:none; color:var(--err); font-size:12px; font-weight:600; margin-top:8px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:10px 12px; line-height:1.5;"></div>
@@ -814,7 +814,7 @@
         <div id="wrap_vid_link" style="display:none;">
           <input id="video_link" type="text" placeholder="https://drive.google.com/... or YouTube link">
           <small style="color:var(--mut); display:block; margin-top:8px; font-size:12px; line-height:1.5;">
-            💡 <strong>Recommended for large HD videos (over 45MB):</strong> Upload to your Google Drive, set access to <em>“Anyone with the link can view”</em>, and paste the link here.
+            💡 <strong>Recommended if video exceeds 100MB or for instant upload:</strong> Upload to Google Drive (set to <em>“Anyone with link can view”</em>) or YouTube and paste link here.
           </small>
         </div>
       </div>
@@ -891,7 +891,7 @@ $("br").innerHTML = BRANCHES.map(b => `
 
 const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
 const FILES = { photo: "img", aadhaar: "img", video: "vid", igshot: "img", washot: "img" };
-const MAX_DIRECT_BYTES = 48 * 1024 * 1024; // 48MB direct upload limit
+const MAX_DIRECT_BYTES = 100 * 1024 * 1024; // 100MB direct upload limit
 
 let videoMode = 'file'; // 'file' or 'link'
 let activeParticipantPhotoBlob = null;
@@ -931,7 +931,7 @@ $("video_link").addEventListener("input", refresh);
       if (f.size > MAX_DIRECT_BYTES) {
         const mb = (f.size / (1024 * 1024)).toFixed(1);
         warn.style.display = "block";
-        warn.innerHTML = `⚠️ This video file is <strong>${mb} MB</strong>, which exceeds the direct upload limit (45 MB).<br>Please select a smaller clip, or click the <strong>Google Drive / YouTube Link</strong> tab above to paste your link!`;
+        warn.innerHTML = `⚠️ This video file is <strong>${mb} MB</strong>, which exceeds the direct upload limit (100 MB).<br>Please select a clip up to 100 MB, or click the <strong>Google Drive / YouTube Link</strong> tab above to paste your link!`;
       } else {
         warn.style.display = "none";
       }
@@ -1058,7 +1058,7 @@ function refresh() {
   if (ageInvalid) {
     $("hint").textContent = "⚠️ Candidate age must be between 08 and 18 years.";
   } else if (vidOversized) {
-    $("hint").textContent = "⚠️ Video is over 45MB. Choose a smaller clip or switch to Google Drive link.";
+    $("hint").textContent = "⚠️ Video exceeds 100MB. Select a clip up to 100MB or switch to Google Drive link.";
   } else if (!s.photo) {
     $("hint").textContent = "Upload participant face photo to enable Submit";
   } else if (!shots) {
@@ -1074,165 +1074,265 @@ function refresh() {
 $("br").addEventListener("change", refresh);
 refresh();
 
-// Canvas Poster Generator
+// Load image through Blob to guarantee zero canvas CORS issues
+async function loadImgFromUrl(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    await new Promise(r => {
+      if (img.complete) r();
+      else { img.onload = r; img.onerror = r; }
+    });
+    return img;
+  } catch (err) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = url;
+    await new Promise(r => {
+      if (img.complete) r();
+      else { img.onload = r; img.onerror = r; }
+    });
+    return img;
+  }
+}
+
+// Canvas Poster Generator with Master Template Support
 async function generatePosterBlob(details, photoImgElement) {
   const canvas = document.createElement("canvas");
-  canvas.width = 900;
-  canvas.height = 1200;
   const ctx = canvas.getContext("2d");
 
-  // 1. Background gradient
-  const bgGrad = ctx.createRadialGradient(450, 600, 50, 450, 600, 650);
-  bgGrad.addColorStop(0, "#0e1e14");
-  bgGrad.addColorStop(0.6, "#08120b");
-  bgGrad.addColorStop(1, "#030604");
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 900, 1200);
-
-  // 2. Ornate Double Gold Border
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(30, 30, 840, 1140);
-
-  ctx.strokeStyle = "rgba(250, 232, 178, 0.4)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(42, 42, 816, 1116);
-
-  // Corner decorative flourishes
-  const drawCorner = (x, y) => {
-    ctx.fillStyle = "#d4a73b";
-    ctx.fillRect(x - 5, y - 5, 10, 10);
-  };
-  drawCorner(30, 30);
-  drawCorner(870, 30);
-  drawCorner(30, 1170);
-  drawCorner(870, 1170);
-
-  // 3. Draw Logo Image
+  // Fetch Master Template Poster settings
+  let masterPosterData = { url: 'assets/master_poster_default.jpg', config: { cx: 50, cy: 44.5, radius: 20 } };
   try {
-    const logoImg = new Image();
-    logoImg.crossOrigin = "anonymous";
-    logoImg.src = "assets/logo.png";
-    await new Promise(r => {
-      if (logoImg.complete) r();
-      else { logoImg.onload = r; logoImg.onerror = r; }
-    });
-    ctx.drawImage(logoImg, 380, 60, 140, 115);
+    if (typeof getMasterPosterFromBackend === 'function') {
+      masterPosterData = await getMasterPosterFromBackend();
+    }
   } catch(e) {}
 
-  // 4. Studio Presents Subtitle
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#fae8b2";
-  ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.letterSpacing = "4px";
-  ctx.fillText("REID & PREMIUM GROOM STUDIO", 450, 205);
-
-  // 5. Championship Title
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "800 32px 'Playfair Display', serif";
-  ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
-
-  const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
-  titleGrad.addColorStop(0, "#fae8b2");
-  titleGrad.addColorStop(0.5, "#d4a73b");
-  titleGrad.addColorStop(1, "#9e751d");
-  ctx.fillStyle = titleGrad;
-  ctx.fillText("COMPETITION 2026", 450, 290);
-
-  // 6. Congratulations Ribbon
-  const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
-  ctx.fillStyle = titleGrad;
-  ctx.beginPath();
-  ctx.roundRect(ribX, ribY, ribW, ribH, 19);
-  ctx.fill();
-
-  ctx.fillStyle = "#050b07";
-  ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
-
-  // 7. Middle Circular Portrait Photo
-  const cx = 450, cy = 525, radius = 135;
-
-  // Outer gold halo
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  // Solid gold border ring
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 5;
-  ctx.stroke();
-
-  // Circular clip for photo
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = "#0d1b11";
-  ctx.fill();
-
-  if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
-    const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-    const size = Math.min(pw, ph);
-    const sx = (pw - size) / 2, sy = (ph - size) / 2;
-    ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
-  } else {
-    // Stylized silhouette if no image
-    ctx.fillStyle = "#d4a73b";
-    ctx.font = "800 70px 'Playfair Display', serif";
-    ctx.fillText("RP", cx, cy + 25);
+  let masterImg = null;
+  if (masterPosterData.url) {
+    try {
+      masterImg = await loadImgFromUrl(masterPosterData.url);
+    } catch(e) {
+      console.warn("Could not load master poster image:", e);
+    }
   }
-  ctx.restore();
 
-  // 8. Participant Name
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 34px 'Playfair Display', serif";
-  ctx.fillText(details.full_name, 450, 715);
+  const pConfig = masterPosterData.config || { cx: 50, cy: 44.5, radius: 20 };
 
-  // 9. Registration ID Badge
-  const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
-  ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(idX, idY, idW, idH, 8);
-  ctx.fill();
-  ctx.stroke();
+  if (masterImg && masterImg.complete && masterImg.naturalWidth > 0) {
+    // 1. Draw Admin Master Poster as the base template
+    canvas.width = masterImg.naturalWidth;
+    canvas.height = masterImg.naturalHeight;
+    ctx.drawImage(masterImg, 0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#fae8b2";
-  ctx.font = "700 18px monospace";
-  ctx.fillText(details.registration_id, 450, 765);
+    // 2. Middle round circle coordinates (auto attached)
+    const cx = canvas.width * (pConfig.cx / 100);
+    const cy = canvas.height * (pConfig.cy / 100);
+    const radius = canvas.width * (pConfig.radius / 100);
 
-  // 10. Meta Information
-  ctx.fillStyle = "#d8d3c5";
-  ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
+    // Circular Face Photo Frame
+    ctx.save();
+    // Glowing gold outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + (canvas.width * 0.012), 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(212, 167, 59, 0.45)";
+    ctx.lineWidth = Math.max(3, canvas.width * 0.007);
+    ctx.stroke();
 
-  if (details.surah_recited) {
+    // Solid golden border ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + (canvas.width * 0.004), 0, Math.PI * 2);
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = Math.max(4, canvas.width * 0.009);
+    ctx.stroke();
+
+    // Circular clip for candidate photo
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#0c1710";
+    ctx.fill();
+
+    if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
+      const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
+      const size = Math.min(pw, ph);
+      const sx = (pw - size) / 2, sy = (ph - size) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+    } else {
+      ctx.fillStyle = "#d4a73b";
+      ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("RP", cx, cy + (radius * 0.3));
+    }
+    ctx.restore();
+
+    // 3. Name & Registration Overlay
+    const textStartY = cy + radius + (canvas.height * 0.038);
+    ctx.textAlign = "center";
+
+    // Candidate Name
+    const nameFontSize = Math.round(canvas.width * 0.046);
+    ctx.font = `700 ${nameFontSize}px 'Playfair Display', serif`;
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.95)";
+    ctx.shadowBlur = 14;
+    ctx.fillText(details.full_name || 'Participant', cx, textStartY);
+    ctx.shadowBlur = 0;
+
+    // Registration ID badge
+    const badgeW = Math.round(canvas.width * 0.38);
+    const badgeH = Math.round(canvas.height * 0.028);
+    const badgeX = cx - (badgeW / 2);
+    const badgeY = textStartY + (canvas.height * 0.016);
+
+    ctx.fillStyle = "rgba(8, 18, 12, 0.88)";
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+    ctx.fill();
+    ctx.stroke();
+
     ctx.fillStyle = "#fae8b2";
-    ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
+    const idFontSize = Math.round(badgeH * 0.62);
+    ctx.font = `700 ${idFontSize}px monospace`;
+    ctx.fillText(details.registration_id, cx, badgeY + (badgeH * 0.72));
+
+    // Branch & Category Subtitle
+    const metaFontSize = Math.round(canvas.width * 0.024);
+    ctx.font = `600 ${metaFontSize}px 'Plus Jakarta Sans', sans-serif`;
+    ctx.fillStyle = "#e0ded7";
+    ctx.shadowColor = "rgba(0,0,0,0.85)";
+    ctx.shadowBlur = 8;
+    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, cx, badgeY + badgeH + (canvas.height * 0.032));
+    if (details.surah_recited) {
+      ctx.fillStyle = "#fae8b2";
+      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, cx, badgeY + badgeH + (canvas.height * 0.058));
+    }
+    ctx.shadowBlur = 0;
+
+  } else {
+    // Default Royal Poster Generator fallback
+    canvas.width = 900;
+    canvas.height = 1200;
+
+    // Background gradient
+    const bgGrad = ctx.createRadialGradient(450, 600, 50, 450, 600, 650);
+    bgGrad.addColorStop(0, "#0e1e14");
+    bgGrad.addColorStop(0.6, "#08120b");
+    bgGrad.addColorStop(1, "#030604");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 900, 1200);
+
+    // Ornate Double Gold Border
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(30, 30, 840, 1140);
+    ctx.strokeStyle = "rgba(250, 232, 178, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(42, 42, 816, 1116);
+
+    // Draw Logo
+    try {
+      const logoImg = await loadImgFromUrl("assets/logo.png");
+      if (logoImg) ctx.drawImage(logoImg, 380, 60, 140, 115);
+    } catch(e) {}
+
+    // Championship Title
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fae8b2";
+    ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
+    ctx.letterSpacing = "4px";
+    ctx.fillText("REID & PREMIUM GROOM STUDIO PRESENTS", 450, 205);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "800 32px 'Playfair Display', serif";
+    ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
+
+    const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
+    titleGrad.addColorStop(0, "#fae8b2");
+    titleGrad.addColorStop(0.5, "#d4a73b");
+    titleGrad.addColorStop(1, "#9e751d");
+    ctx.fillStyle = titleGrad;
+    ctx.fillText("COMPETITION 2026", 450, 290);
+
+    // Congratulations Ribbon
+    const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
+    ctx.fillStyle = titleGrad;
+    ctx.beginPath();
+    ctx.roundRect(ribX, ribY, ribW, ribH, 19);
+    ctx.fill();
+
+    ctx.fillStyle = "#050b07";
+    ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
+
+    // Middle Circular Portrait Photo
+    const cx = 450, cy = 525, radius = 135;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#0d1b11";
+    ctx.fill();
+
+    if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
+      const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
+      const size = Math.min(pw, ph);
+      const sx = (pw - size) / 2, sy = (ph - size) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+    } else {
+      ctx.fillStyle = "#d4a73b";
+      ctx.font = "800 70px 'Playfair Display', serif";
+      ctx.fillText("RP", cx, cy + 25);
+    }
+    ctx.restore();
+
+    // Participant Name
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 34px 'Playfair Display', serif";
+    ctx.fillText(details.full_name, 450, 715);
+
+    // Registration ID Badge
+    const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
+    ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(idX, idY, idW, idH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#fae8b2";
+    ctx.font = "700 18px monospace";
+    ctx.fillText(details.registration_id, 450, 765);
+
+    // Meta Information
+    ctx.fillStyle = "#d8d3c5";
+    ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
+    if (details.surah_recited) {
+      ctx.fillStyle = "#fae8b2";
+      ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
+    }
   }
-
-  // 11. Official Verification Stamp
-  ctx.strokeStyle = "rgba(212, 167, 59, 0.35)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(120, 890);
-  ctx.lineTo(780, 890);
-  ctx.stroke();
-
-  ctx.fillStyle = "#d4a73b";
-  ctx.font = "700 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("✓ OFFICIALLY RECORDED REGISTRATION • ALL KARNATAKA QIRATH 2026", 450, 930);
-
-  ctx.fillStyle = "#8a8578";
-  ctx.font = "500 13px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("Puttur  •  Thokkotu  •  B.C Road  •  Sullia  |  reidandpremium.kyrosh.in", 450, 960);
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
@@ -1251,8 +1351,9 @@ $("f").addEventListener("submit", async e => {
   hint.textContent = "1/3 Optimizing photos & proofs for high-speed upload…";
   fill.style.width = "20%";
 
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  const regId = `AKQC-2026-${randomSuffix}`;
+  // Collision-free Registration ID for 1000+ candidates
+  const uniqueSuffix = Date.now().toString().slice(-5) + Math.floor(100 + Math.random() * 900);
+  const regId = `AKQC-2026-${uniqueSuffix}`;
 
   try {
     // 1. High-speed client-side image compression in parallel (takes ~150ms)
@@ -1281,7 +1382,7 @@ $("f").addEventListener("submit", async e => {
     if (videoMode === "link") {
       videoUrl = $("video_link").value.trim();
     } else {
-      hint.textContent = "3/3 Uploading recitation video… please keep page open.";
+      hint.textContent = "3/3 Uploading recitation video (up to 100 MB)… please keep page open.";
       fill.style.width = "75%";
       videoUrl = await uploadToStorage('qirath-videos', $("video").files[0], regId);
     }

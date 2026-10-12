@@ -4,8 +4,9 @@
  * Easy to Manage Dashboard for Reid & Premium Organizers
  * Features: 
  * - Full Dossier Review & Judging Assessment
- * - Candidate Photo Upload & Official Poster Studio (Download / Update)
+ * - Permanent Master Template Poster Studio (Auto-Composite Candidate Face in Middle Round)
  * - Safe Delete with Confirmation Modal & 10-Second Undo Timer
+ * - Optimized Table Pagination & Search for 1,000+ Participants
  * - Direct WhatsApp Participant Notifications
  * ====================================================================
  */
@@ -19,11 +20,19 @@ let currentFilter = {
 };
 let activeReviewParticipant = null;
 
+// Pagination state (Optimized for 1,000+ participants)
+let currentPage = 1;
+const PAGE_SIZE = 50;
+
 // Safe Deletion & Undo State
 let pendingDeleteParticipant = null;
 let undoDeleteTimer = null;
 let undoDeleteCountdownInterval = null;
 let undoParticipantData = null;
+
+// Master Poster State
+let currentMasterPosterUrl = '';
+let currentMasterPosterConfig = { cx: 50, cy: 44.5, radius: 20 };
 let posterLogoCache = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -42,8 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateBackendIndicator();
   initToolbarFilters();
+  initPaginationControls();
   initSupabaseSettingsModal();
   initDeleteHandlers();
+  initMasterPosterStudio();
   await loadAndRenderParticipants();
 });
 
@@ -71,6 +82,7 @@ async function loadAndRenderParticipants() {
   try {
     allParticipants = await fetchParticipantsFromBackend();
     renderStatsCounters(allParticipants);
+    currentPage = 1;
     renderTableRows();
   } catch (err) {
     console.error('Failed to load participants:', err);
@@ -130,9 +142,33 @@ function getFilteredParticipants() {
   });
 }
 
+function initPaginationControls() {
+  const prevBtn = document.getElementById('btnPrevPage');
+  const nextBtn = document.getElementById('btnNextPage');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTableRows();
+      }
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const filtered = getFilteredParticipants();
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTableRows();
+      }
+    });
+  }
+}
+
 function renderTableRows() {
   const tableBody = document.getElementById('participantsTableBody');
   const emptyState = document.getElementById('emptyStateNotice');
+  const paginationBar = document.getElementById('paginationBar');
   if (!tableBody) return;
 
   const filtered = getFilteredParticipants();
@@ -140,12 +176,33 @@ function renderTableRows() {
   if (filtered.length === 0) {
     tableBody.innerHTML = '';
     if (emptyState) emptyState.style.display = 'block';
+    if (paginationBar) paginationBar.style.display = 'none';
     return;
   }
 
   if (emptyState) emptyState.style.display = 'none';
+  if (paginationBar) paginationBar.style.display = 'flex';
 
-  tableBody.innerHTML = filtered.map(p => {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filtered.length);
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  // Update pagination indicator
+  const infoEl = document.getElementById('paginationInfo');
+  const pageEl = document.getElementById('paginationCurrentPage');
+  const prevBtn = document.getElementById('btnPrevPage');
+  const nextBtn = document.getElementById('btnNextPage');
+
+  if (infoEl) infoEl.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${filtered.length} entries`;
+  if (pageEl) pageEl.textContent = `Page ${currentPage} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = (currentPage <= 1);
+  if (nextBtn) nextBtn.disabled = (currentPage >= totalPages);
+
+  tableBody.innerHTML = pageItems.map(p => {
     let statusClass = "pending";
     if (p.status === "Approved") statusClass = "approved";
     if (p.status === "Shortlisted") statusClass = "shortlisted";
@@ -220,6 +277,7 @@ function initToolbarFilters() {
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       currentFilter.search = searchInput.value.trim();
+      currentPage = 1;
       renderTableRows();
     });
   }
@@ -227,6 +285,7 @@ function initToolbarFilters() {
   if (branchSelect) {
     branchSelect.addEventListener('change', () => {
       currentFilter.branch = branchSelect.value;
+      currentPage = 1;
       renderTableRows();
     });
   }
@@ -234,6 +293,7 @@ function initToolbarFilters() {
   if (statusSelect) {
     statusSelect.addEventListener('change', () => {
       currentFilter.status = statusSelect.value;
+      currentPage = 1;
       renderTableRows();
     });
   }
@@ -241,6 +301,7 @@ function initToolbarFilters() {
   if (categorySelect) {
     categorySelect.addEventListener('change', () => {
       currentFilter.category = categorySelect.value;
+      currentPage = 1;
       renderTableRows();
     });
   }
@@ -421,7 +482,7 @@ async function finalizePermanentDelete(participant) {
 }
 
 // ====================================================================
-// IMAGE COMPRESSION & OFFICIAL CANVAS POSTER GENERATOR (900x1200)
+// IMAGE COMPRESSION & MASTER TEMPLATE POSTER GENERATOR
 // ====================================================================
 
 function compressImage(file, maxDimension = 1400, quality = 0.8) {
@@ -509,157 +570,224 @@ async function loadImgFromUrl(url) {
   }
 }
 
+// Generate Official Candidate Poster with Master Template
 async function generatePosterBlob(details, photoImgElement) {
   const canvas = document.createElement('canvas');
-  canvas.width = 900;
-  canvas.height = 1200;
   const ctx = canvas.getContext('2d');
 
-  // 1. Dark Emerald Radial Background
-  const grad = ctx.createRadialGradient(450, 360, 40, 450, 600, 750);
-  grad.addColorStop(0, '#0d3822');
-  grad.addColorStop(0.5, '#061a10');
-  grad.addColorStop(1, '#020603');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 900, 1200);
-
-  // 2. Gold Border Frame
-  ctx.strokeStyle = '#d4a73b';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(30, 30, 840, 1140);
-  ctx.strokeStyle = 'rgba(212, 167, 59, 0.35)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(40, 40, 820, 1120);
-
-  // Corner Accents
-  const corners = [
-    [40, 40], [860, 40], [40, 1160], [860, 1160]
-  ];
-  corners.forEach(([cx, cy]) => {
-    ctx.fillStyle = '#d4a73b';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // 3. Reid & Premium Logo
+  let masterData = { url: 'assets/master_poster_default.jpg', config: { cx: 50, cy: 44.5, radius: 20 } };
   try {
-    const logoImg = await getPosterLogo();
-    ctx.drawImage(logoImg, 380, 60, 140, 115);
+    if (typeof getMasterPosterFromBackend === 'function') {
+      masterData = await getMasterPosterFromBackend();
+    }
   } catch(e) {}
 
-  // 4. Studio Presents Subtitle
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#fae8b2";
-  ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("REID & PREMIUM GROOM STUDIO PRESENTS", 450, 205);
-
-  // 5. Championship Title
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "800 32px 'Playfair Display', serif";
-  ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
-
-  const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
-  titleGrad.addColorStop(0, "#fae8b2");
-  titleGrad.addColorStop(0.5, "#d4a73b");
-  titleGrad.addColorStop(1, "#9e751d");
-  ctx.fillStyle = titleGrad;
-  ctx.fillText("COMPETITION 2026", 450, 290);
-
-  // 6. Congratulations Ribbon
-  const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
-  ctx.fillStyle = titleGrad;
-  ctx.beginPath();
-  ctx.roundRect(ribX, ribY, ribW, ribH, 19);
-  ctx.fill();
-
-  ctx.fillStyle = "#050b07";
-  ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
-
-  // 7. Middle Circular Portrait Photo
-  const cx = 450, cy = 525, radius = 135;
-
-  // Outer gold halo
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  // Solid gold border ring
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 5;
-  ctx.stroke();
-
-  // Circular clip for candidate photo
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = "#0d1b11";
-  ctx.fill();
-
-  if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
-    const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-    const size = Math.min(pw, ph);
-    const sx = (pw - size) / 2, sy = (ph - size) / 2;
-    ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
-  } else {
-    // Stylized silhouette if no image
-    ctx.fillStyle = "#d4a73b";
-    ctx.font = "800 70px 'Playfair Display', serif";
-    ctx.fillText("RP", cx, cy + 25);
+  let masterImg = null;
+  if (masterData.url) {
+    try {
+      masterImg = await loadImgFromUrl(masterData.url);
+    } catch(e) {}
   }
-  ctx.restore();
 
-  // 8. Participant Name
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 34px 'Playfair Display', serif";
-  ctx.fillText(details.full_name || 'Candidate', 450, 715);
+  const pConfig = masterData.config || { cx: 50, cy: 44.5, radius: 20 };
 
-  // 9. Registration ID Badge
-  const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
-  ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(idX, idY, idW, idH, 8);
-  ctx.fill();
-  ctx.stroke();
+  if (masterImg && masterImg.complete && masterImg.naturalWidth > 0) {
+    // 1. Draw Master Template Poster
+    canvas.width = masterImg.naturalWidth;
+    canvas.height = masterImg.naturalHeight;
+    ctx.drawImage(masterImg, 0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#fae8b2";
-  ctx.font = "700 18px monospace";
-  ctx.fillText(details.registration_id, 450, 765);
+    // 2. Middle round circle coordinates
+    const cx = canvas.width * (pConfig.cx / 100);
+    const cy = canvas.height * (pConfig.cy / 100);
+    const radius = canvas.width * (pConfig.radius / 100);
 
-  // 10. Meta Information
-  ctx.fillStyle = "#d8d3c5";
-  ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
+    // Circular Face Photo Frame
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + (canvas.width * 0.012), 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(212, 167, 59, 0.45)";
+    ctx.lineWidth = Math.max(3, canvas.width * 0.007);
+    ctx.stroke();
 
-  if (details.surah_recited) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + (canvas.width * 0.004), 0, Math.PI * 2);
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = Math.max(4, canvas.width * 0.009);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#0c1710";
+    ctx.fill();
+
+    if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
+      const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
+      const size = Math.min(pw, ph);
+      const sx = (pw - size) / 2, sy = (ph - size) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+    } else {
+      ctx.fillStyle = "#d4a73b";
+      ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("RP", cx, cy + (radius * 0.3));
+    }
+    ctx.restore();
+
+    // 3. Name & Registration Overlay
+    const textStartY = cy + radius + (canvas.height * 0.038);
+    ctx.textAlign = "center";
+
+    // Candidate Name
+    const nameFontSize = Math.round(canvas.width * 0.046);
+    ctx.font = `700 ${nameFontSize}px 'Playfair Display', serif`;
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.95)";
+    ctx.shadowBlur = 14;
+    ctx.fillText(details.full_name || 'Participant', cx, textStartY);
+    ctx.shadowBlur = 0;
+
+    // Registration ID badge
+    const badgeW = Math.round(canvas.width * 0.38);
+    const badgeH = Math.round(canvas.height * 0.028);
+    const badgeX = cx - (badgeW / 2);
+    const badgeY = textStartY + (canvas.height * 0.016);
+
+    ctx.fillStyle = "rgba(8, 18, 12, 0.88)";
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+    ctx.fill();
+    ctx.stroke();
+
     ctx.fillStyle = "#fae8b2";
-    ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
+    const idFontSize = Math.round(badgeH * 0.62);
+    ctx.font = `700 ${idFontSize}px monospace`;
+    ctx.fillText(details.registration_id, cx, badgeY + (badgeH * 0.72));
+
+    // Branch & Category Subtitle
+    const metaFontSize = Math.round(canvas.width * 0.024);
+    ctx.font = `600 ${metaFontSize}px 'Plus Jakarta Sans', sans-serif`;
+    ctx.fillStyle = "#e0ded7";
+    ctx.shadowColor = "rgba(0,0,0,0.85)";
+    ctx.shadowBlur = 8;
+    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, cx, badgeY + badgeH + (canvas.height * 0.032));
+    if (details.surah_recited) {
+      ctx.fillStyle = "#fae8b2";
+      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, cx, badgeY + badgeH + (canvas.height * 0.058));
+    }
+    ctx.shadowBlur = 0;
+
+  } else {
+    // Default Royal Poster Generator Fallback
+    canvas.width = 900;
+    canvas.height = 1200;
+
+    const grad = ctx.createRadialGradient(450, 360, 40, 450, 600, 750);
+    grad.addColorStop(0, '#0d3822');
+    grad.addColorStop(0.5, '#061a10');
+    grad.addColorStop(1, '#020603');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 900, 1200);
+
+    ctx.strokeStyle = '#d4a73b';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(30, 30, 840, 1140);
+    ctx.strokeStyle = 'rgba(212, 167, 59, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(40, 40, 820, 1120);
+
+    try {
+      const logoImg = await getPosterLogo();
+      ctx.drawImage(logoImg, 380, 60, 140, 115);
+    } catch(e) {}
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fae8b2";
+    ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText("REID & PREMIUM GROOM STUDIO PRESENTS", 450, 205);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "800 32px 'Playfair Display', serif";
+    ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
+
+    const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
+    titleGrad.addColorStop(0, "#fae8b2");
+    titleGrad.addColorStop(0.5, "#d4a73b");
+    titleGrad.addColorStop(1, "#9e751d");
+    ctx.fillStyle = titleGrad;
+    ctx.fillText("COMPETITION 2026", 450, 290);
+
+    const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
+    ctx.fillStyle = titleGrad;
+    ctx.beginPath();
+    ctx.roundRect(ribX, ribY, ribW, ribH, 19);
+    ctx.fill();
+
+    ctx.fillStyle = "#050b07";
+    ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
+
+    const cx = 450, cy = 525, radius = 135;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#0d1b11";
+    ctx.fill();
+
+    if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
+      const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
+      const size = Math.min(pw, ph);
+      const sx = (pw - size) / 2, sy = (ph - size) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+    } else {
+      ctx.fillStyle = "#d4a73b";
+      ctx.font = "800 70px 'Playfair Display', serif";
+      ctx.fillText("RP", cx, cy + 25);
+    }
+    ctx.restore();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 34px 'Playfair Display', serif";
+    ctx.fillText(details.full_name || 'Candidate', 450, 715);
+
+    const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
+    ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
+    ctx.strokeStyle = "#d4a73b";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(idX, idY, idW, idH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#fae8b2";
+    ctx.font = "700 18px monospace";
+    ctx.fillText(details.registration_id, 450, 765);
+
+    ctx.fillStyle = "#d8d3c5";
+    ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
+    if (details.surah_recited) {
+      ctx.fillStyle = "#fae8b2";
+      ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
+    }
   }
-
-  // 11. Official Verification Stamp
-  ctx.strokeStyle = "rgba(212, 167, 59, 0.35)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(120, 890);
-  ctx.lineTo(780, 890);
-  ctx.stroke();
-
-  ctx.fillStyle = "#d4a73b";
-  ctx.font = "700 14px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("✓ OFFICIALLY RECORDED REGISTRATION • ALL KARNATAKA QIRATH 2026", 450, 930);
-
-  ctx.fillStyle = "#8a8578";
-  ctx.font = "500 13px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText("Puttur  •  Thokkotu  •  B.C Road  •  Sullia  |  reidandpremium.kyrosh.in", 450, 960);
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
@@ -712,7 +840,7 @@ async function adminHandlePhotoChange(event, regId) {
     if (idx !== -1) allParticipants[idx].photo_url = newPhotoUrl;
 
     renderTableRows();
-    alert("✅ Candidate photo uploaded and updated successfully!");
+    alert("✅ Candidate photo updated successfully!");
   } catch (err) {
     console.error("Failed to update candidate photo:", err);
     alert("Error updating photo: " + err.message);
@@ -745,6 +873,246 @@ async function adminDeletePosterPhoto(regId) {
     console.error("Failed to remove photo:", err);
     alert("Error removing photo: " + err.message);
   }
+}
+
+// ====================================================================
+// PERMANENT MASTER POSTER TEMPLATE STUDIO CONTROLLER
+// Allows admin to upload & change permanent master poster background
+// with auto-compositing of candidate face in the middle round circle
+// ====================================================================
+
+async function initMasterPosterStudio() {
+  const modal = document.getElementById('masterPosterModal');
+  const openBtn = document.getElementById('btnOpenMasterPosterModal');
+  const closeBtn = document.getElementById('closeMasterPosterModal');
+  const uploadBtn = document.getElementById('btnUploadMasterPosterFile');
+  const fileInput = document.getElementById('inputMasterPosterFile');
+  const resetBtn = document.getElementById('btnResetMasterPoster');
+  const saveBtn = document.getElementById('btnSaveMasterPosterConfig');
+  const sliderY = document.getElementById('sliderCircleY');
+  const sliderRadius = document.getElementById('sliderCircleRadius');
+  const labelY = document.getElementById('labelCircleY');
+  const labelRadius = document.getElementById('labelCircleRadius');
+
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', async () => {
+      modal.classList.add('open');
+      const data = await getMasterPosterFromBackend();
+      currentMasterPosterUrl = data.url;
+      currentMasterPosterConfig = data.config || { cx: 50, cy: 44.5, radius: 20 };
+      if (sliderY) sliderY.value = currentMasterPosterConfig.cy;
+      if (sliderRadius) sliderRadius.value = currentMasterPosterConfig.radius;
+      if (labelY) labelY.textContent = currentMasterPosterConfig.cy + '%';
+      if (labelRadius) labelRadius.textContent = currentMasterPosterConfig.radius + '%';
+      updateMasterPosterStatusLabel();
+      await renderMasterPosterPreview();
+    });
+  }
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+  }
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+
+  if (uploadBtn && fileInput) {
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading Master Poster…';
+
+      try {
+        const comp = await compressImage(file, 2000, 0.9);
+        let uploadedUrl = URL.createObjectURL(comp);
+        if (isSupabaseConfigured()) {
+          uploadedUrl = await uploadToStorage('aadhaar-cards', comp, 'master_template');
+        }
+        currentMasterPosterUrl = uploadedUrl;
+        await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
+        updateMasterPosterStatusLabel();
+        await renderMasterPosterPreview();
+        alert("✅ Master Template Poster uploaded and saved successfully! All participants will now receive this poster.");
+      } catch (err) {
+        console.error("Master poster upload error:", err);
+        alert("Failed to upload poster: " + err.message);
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '📁 Choose Poster Image to Upload';
+      }
+    });
+  }
+
+  if (sliderY) {
+    sliderY.addEventListener('input', () => {
+      currentMasterPosterConfig.cy = parseFloat(sliderY.value);
+      if (labelY) labelY.textContent = sliderY.value + '%';
+      renderMasterPosterPreview();
+    });
+  }
+
+  if (sliderRadius) {
+    sliderRadius.addEventListener('input', () => {
+      currentMasterPosterConfig.radius = parseFloat(sliderRadius.value);
+      if (labelRadius) labelRadius.textContent = sliderRadius.value + '%';
+      renderMasterPosterPreview();
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      try {
+        await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
+        alert("✅ Master Poster settings saved successfully!");
+      } catch (err) {
+        alert("Failed to save settings: " + err.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save Poster Settings';
+      }
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      if (confirm("Reset to default Royal Emerald & Gold Master Poster?")) {
+        currentMasterPosterUrl = 'assets/master_poster_default.jpg';
+        currentMasterPosterConfig = { cx: 50, cy: 44.5, radius: 20 };
+        if (sliderY) sliderY.value = 44.5;
+        if (sliderRadius) sliderRadius.value = 20;
+        if (labelY) labelY.textContent = '44.5%';
+        if (labelRadius) labelRadius.textContent = '20%';
+        await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
+        updateMasterPosterStatusLabel();
+        await renderMasterPosterPreview();
+        alert("Reset to default Master Template Poster.");
+      }
+    });
+  }
+}
+
+function updateMasterPosterStatusLabel() {
+  const el = document.getElementById('masterPosterStatusText');
+  if (!el) return;
+  if (!currentMasterPosterUrl || currentMasterPosterUrl.includes('master_poster_default.jpg')) {
+    el.innerHTML = '🟢 Active: Default Royal Emerald & Gold Master Poster';
+  } else {
+    el.innerHTML = '🟢 Active: Custom Uploaded Master Poster (Live across all candidates)';
+  }
+}
+
+async function renderMasterPosterPreview() {
+  const canvas = document.getElementById('masterPosterPreviewCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let posterImg = null;
+  const urlToLoad = currentMasterPosterUrl || 'assets/master_poster_default.jpg';
+  try {
+    posterImg = await loadImgFromUrl(urlToLoad);
+  } catch(e) {}
+
+  if (!posterImg || !posterImg.complete || posterImg.naturalWidth === 0) {
+    canvas.width = 900;
+    canvas.height = 1200;
+    ctx.fillStyle = '#0a1710';
+    ctx.fillRect(0, 0, 900, 1200);
+    ctx.fillStyle = '#fae8b2';
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Poster Preview Loading…', 450, 600);
+    return;
+  }
+
+  canvas.width = posterImg.naturalWidth;
+  canvas.height = posterImg.naturalHeight;
+  ctx.drawImage(posterImg, 0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width * (currentMasterPosterConfig.cx / 100);
+  const cy = canvas.height * (currentMasterPosterConfig.cy / 100);
+  const radius = canvas.width * (currentMasterPosterConfig.radius / 100);
+
+  // Draw Sample Face inside the middle circular frame
+  ctx.save();
+  // Glowing gold outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + (canvas.width * 0.012), 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(212, 167, 59, 0.45)";
+  ctx.lineWidth = Math.max(3, canvas.width * 0.007);
+  ctx.stroke();
+
+  // Solid golden border ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + (canvas.width * 0.004), 0, Math.PI * 2);
+  ctx.strokeStyle = "#d4a73b";
+  ctx.lineWidth = Math.max(4, canvas.width * 0.009);
+  ctx.stroke();
+
+  // Circular clip
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "#0d1b11";
+  ctx.fill();
+
+  // Sample portrait monogram or logo
+  try {
+    const logoImg = await getPosterLogo();
+    if (logoImg) {
+      ctx.drawImage(logoImg, cx - (radius * 0.7), cy - (radius * 0.7), radius * 1.4, radius * 1.4);
+    }
+  } catch(e) {
+    ctx.fillStyle = "#d4a73b";
+    ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("RP", cx, cy + (radius * 0.3));
+  }
+  ctx.restore();
+
+  // Draw sample candidate text overlay
+  const textStartY = cy + radius + (canvas.height * 0.038);
+  ctx.textAlign = "center";
+
+  const nameFontSize = Math.round(canvas.width * 0.046);
+  ctx.font = `700 ${nameFontSize}px 'Playfair Display', serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.95)";
+  ctx.shadowBlur = 14;
+  ctx.fillText("Sample Candidate Name", cx, textStartY);
+  ctx.shadowBlur = 0;
+
+  const badgeW = Math.round(canvas.width * 0.38);
+  const badgeH = Math.round(canvas.height * 0.028);
+  const badgeX = cx - (badgeW / 2);
+  const badgeY = textStartY + (canvas.height * 0.016);
+
+  ctx.fillStyle = "rgba(8, 18, 12, 0.88)";
+  ctx.strokeStyle = "#d4a73b";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#fae8b2";
+  const idFontSize = Math.round(badgeH * 0.62);
+  ctx.font = `700 ${idFontSize}px monospace`;
+  ctx.fillText("AKQC-2026-SAMPLE", cx, badgeY + (badgeH * 0.72));
+
+  const metaFontSize = Math.round(canvas.width * 0.024);
+  ctx.font = `600 ${metaFontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#e0ded7";
+  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowBlur = 8;
+  ctx.fillText("Category: Age 08 - 18 Years  •  Reid & Premium Branch", cx, badgeY + badgeH + (canvas.height * 0.032));
+  ctx.shadowBlur = 0;
 }
 
 // ====================================================================
@@ -805,7 +1173,7 @@ function openReviewDossier(regId) {
               <input type="file" id="adminDossierPhotoInput" accept="image/*" style="display:none;" onchange="adminHandlePhotoChange(event, '${participant.registration_id}')">
             </div>
           </div>
-          <small style="color:var(--text-muted); font-size:11px; display:block;">Poster includes the circular candidate photo, registration ID, and branch details.</small>
+          <small style="color:var(--text-muted); font-size:11px; display:block;">Poster automatically composites candidate face into the Master Template's middle round circle.</small>
         </div>
 
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">

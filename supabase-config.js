@@ -83,7 +83,9 @@ async function uploadToStorage(bucketName, file, folder = '') {
 
   const fileExt = file.name.split('.').pop();
   const cleanName = file.name.replace(/[^a-zA-Z0-9]/g, '_');
-  const filePath = `${folder ? folder + '/' : ''}${Date.now()}_${cleanName}.${fileExt}`;
+  // Collision-free unique filename for 1000+ candidates
+  const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const filePath = `${folder ? folder + '/' : ''}${uniqueId}_${cleanName}.${fileExt}`;
 
   const { data, error } = await supabaseClient.storage
     .from(bucketName)
@@ -103,6 +105,67 @@ async function uploadToStorage(bucketName, file, folder = '') {
     .getPublicUrl(filePath);
 
   return urlData.publicUrl;
+}
+
+/**
+ * Get Master Template Poster URL and configuration
+ */
+async function getMasterPosterFromBackend() {
+  const localUrl = localStorage.getItem('AKQC_MASTER_POSTER_URL') || '';
+  const localConfig = localStorage.getItem('AKQC_MASTER_POSTER_CONFIG');
+  let config = { cx: 50, cy: 44.5, radius: 20 };
+  if (localConfig) {
+    try { config = JSON.parse(localConfig); } catch(e) {}
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('app_settings')
+        .select('*')
+        .in('key', ['master_poster_url', 'master_poster_config']);
+
+      if (!error && data && data.length > 0) {
+        const urlRow = data.find(r => r.key === 'master_poster_url');
+        const configRow = data.find(r => r.key === 'master_poster_config');
+        if (urlRow && urlRow.value) {
+          localStorage.setItem('AKQC_MASTER_POSTER_URL', urlRow.value);
+          if (configRow && configRow.value) {
+            localStorage.setItem('AKQC_MASTER_POSTER_CONFIG', configRow.value);
+            try { config = JSON.parse(configRow.value); } catch(e) {}
+          }
+          return { url: urlRow.value, config };
+        }
+      }
+    } catch(err) {
+      console.warn('Could not read master poster from app_settings:', err);
+    }
+  }
+
+  // Fallback to default bundled poster if none set
+  const finalUrl = localUrl || 'assets/master_poster_default.jpg';
+  return { url: finalUrl, config };
+}
+
+/**
+ * Save Master Template Poster URL and configuration
+ */
+async function saveMasterPosterToBackend(url, config = { cx: 50, cy: 44.5, radius: 20 }) {
+  localStorage.setItem('AKQC_MASTER_POSTER_URL', url || '');
+  localStorage.setItem('AKQC_MASTER_POSTER_CONFIG', JSON.stringify(config));
+
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = [
+        { key: 'master_poster_url', value: url || '', updated_at: new Date().toISOString() },
+        { key: 'master_poster_config', value: JSON.stringify(config), updated_at: new Date().toISOString() }
+      ];
+      await supabaseClient.from('app_settings').upsert(rows);
+    } catch(err) {
+      console.warn('Could not upsert master poster to app_settings:', err);
+    }
+  }
+  return true;
 }
 
 /**
@@ -130,14 +193,15 @@ async function submitRegistrationToBackend(participantData) {
 }
 
 /**
- * Fetch all participants for Admin
+ * Fetch all participants for Admin (Configured for up to 5,000 participants)
  */
 async function fetchParticipantsFromBackend(filters = {}) {
   if (isSupabaseConfigured()) {
     let query = supabaseClient
       .from('participants')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 4999); // Ensures all 1000+ records are loaded without truncation
 
     if (filters.branch && filters.branch !== 'All') {
       query = query.eq('branch', filters.branch);

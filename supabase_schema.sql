@@ -137,6 +137,28 @@ ON storage.objects FOR DELETE
 TO public 
 USING (bucket_id = 'follow-proofs');
 
+-- 7. Master Poster & App Settings Table
+CREATE TABLE IF NOT EXISTS public.app_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read app_settings" ON public.app_settings;
+CREATE POLICY "Allow public read app_settings" 
+ON public.app_settings FOR SELECT 
+TO public 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow public upsert app_settings" ON public.app_settings;
+CREATE POLICY "Allow public upsert app_settings" 
+ON public.app_settings FOR ALL 
+TO public, anon, authenticated 
+USING (true) 
+WITH CHECK (true);
+
 -- ====================================================================
--- SUCCESS: Schema and Storage Buckets setup is complete!
+-- SUCCESS: Schema, Storage Buckets, and Master Poster Setup is complete!
 -- ====================================================================
