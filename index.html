@@ -1199,13 +1199,68 @@ async function loadImgFromUrl(url) {
   }
 }
 
+function normalizePosterConfig(raw) {
+  const cfg = raw || {};
+  return {
+    box_w: cfg.box_w !== undefined ? parseFloat(cfg.box_w) : (cfg.radius ? parseFloat(cfg.radius) * 2 : 38),
+    box_h: cfg.box_h !== undefined ? parseFloat(cfg.box_h) : (cfg.radius ? parseFloat(cfg.radius) * 2 : 40),
+    box_x: cfg.box_x !== undefined ? parseFloat(cfg.box_x) : (cfg.cx !== undefined ? parseFloat(cfg.cx) : 50),
+    box_y: cfg.box_y !== undefined ? parseFloat(cfg.box_y) : (cfg.cy !== undefined ? parseFloat(cfg.cy) : 44.5),
+    box_curve: cfg.box_curve !== undefined ? parseFloat(cfg.box_curve) : (cfg.curve !== undefined ? parseFloat(cfg.curve) : 12),
+    show_name: cfg.show_name !== undefined ? Boolean(cfg.show_name) : true,
+    name_x: cfg.name_x !== undefined ? parseFloat(cfg.name_x) : 50,
+    name_y: cfg.name_y !== undefined ? parseFloat(cfg.name_y) : 68,
+    name_size: cfg.name_size !== undefined ? parseFloat(cfg.name_size) : 4.2,
+    name_color: cfg.name_color || '#ffffff'
+  };
+}
+
+function drawRoundedRectPath(ctx, x, y, w, h, radius) {
+  const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+  if (r === 0) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    return;
+  }
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
 // Canvas Poster Generator with Master Template Support
 async function generatePosterBlob(details, photoImgElement) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
   // Fetch Master Template Poster settings
-  let masterPosterData = { url: 'assets/master_poster_default.jpg', config: { cx: 50, cy: 44.5, radius: 20 } };
+  let masterPosterData = {
+    url: 'assets/master_poster_default.jpg',
+    config: {
+      box_w: 38,
+      box_h: 40,
+      box_x: 50,
+      box_y: 44.5,
+      box_curve: 12,
+      show_name: true,
+      name_x: 50,
+      name_y: 68,
+      name_size: 4.2,
+      name_color: '#ffffff'
+    }
+  };
   try {
     if (typeof getMasterPosterFromBackend === 'function') {
       masterPosterData = await getMasterPosterFromBackend();
@@ -1221,7 +1276,7 @@ async function generatePosterBlob(details, photoImgElement) {
     }
   }
 
-  const pConfig = masterPosterData.config || { cx: 50, cy: 44.5, radius: 20 };
+  const pConfig = normalizePosterConfig(masterPosterData.config);
 
   if (masterImg && masterImg.complete && masterImg.naturalWidth > 0) {
     // 1. Draw Admin Master Poster at Instagram Post size / master resolution
@@ -1229,33 +1284,57 @@ async function generatePosterBlob(details, photoImgElement) {
     canvas.height = masterImg.naturalHeight || 1350;
     ctx.drawImage(masterImg, 0, 0, canvas.width, canvas.height);
 
-    // 2. Middle round circle coordinates (auto attached)
-    const cx = canvas.width * ((pConfig.cx !== undefined ? pConfig.cx : 50) / 100);
-    const cy = canvas.height * ((pConfig.cy !== undefined ? pConfig.cy : 44.5) / 100);
-    const radius = canvas.width * ((pConfig.radius !== undefined ? pConfig.radius : 20) / 100);
+    // 2. Middle photo box coordinates (size, curve, position)
+    const boxW = canvas.width * (pConfig.box_w / 100);
+    const boxH = canvas.height * (pConfig.box_h / 100);
+    const centerX = canvas.width * (pConfig.box_x / 100);
+    const centerY = canvas.height * (pConfig.box_y / 100);
+    const boxX = centerX - (boxW / 2);
+    const boxY = centerY - (boxH / 2);
+    const curveRadius = Math.min(boxW, boxH) * (pConfig.box_curve / 100);
 
-    // Circular Face Photo Frame (NO STROKE, NO BORDER - PURE CLEAN CLIP)
+    // Box Face Photo Frame with Adjustable Curve & Size (NO STROKE, NO BORDER)
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
     ctx.clip();
     ctx.fillStyle = "#0c1710";
     ctx.fill();
 
     if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
       const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-      const size = Math.min(pw, ph);
-      const sx = (pw - size) / 2, sy = (ph - size) / 2;
-      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+      const scale = Math.max(boxW / pw, boxH / ph);
+      const sw = boxW / scale;
+      const sh = boxH / scale;
+      const sx = (pw - sw) / 2;
+      const sy = (ph - sh) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, sw, sh, boxX, boxY, boxW, boxH);
     } else {
       ctx.fillStyle = "#d4a73b";
-      ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+      ctx.font = `800 ${Math.round(canvas.width * 0.08)}px 'Playfair Display', serif`;
       ctx.textAlign = "center";
-      ctx.fillText("RP", cx, cy + (radius * 0.3));
+      ctx.textBaseline = "middle";
+      ctx.fillText("RP", centerX, centerY);
     }
     ctx.restore();
 
-    // Pure poster graphic: No text overlay drawn because master template has official typography
+    // 3. Participant Name in CAPS (Admin-adjustable position, size & color)
+    if (pConfig.show_name !== false) {
+      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const nameX = canvas.width * (pConfig.name_x / 100);
+      const nameY = canvas.height * (pConfig.name_y / 100);
+      const nameFontSize = Math.round(canvas.width * (pConfig.name_size / 100));
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
+      ctx.fillStyle = pConfig.name_color || "#ffffff";
+      ctx.fillText(candidateName, nameX, nameY);
+      ctx.restore();
+    }
+
   } else {
     // Default Royal Poster Generator fallback (Instagram Portrait Post: 1080 x 1350)
     canvas.width = 1080;
@@ -1268,21 +1347,47 @@ async function generatePosterBlob(details, photoImgElement) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, 1080, 1350);
 
-    const cx = 540, cy = 600, radius = 220;
+    const boxW = 1080 * (pConfig.box_w / 100);
+    const boxH = 1350 * (pConfig.box_h / 100);
+    const centerX = 1080 * (pConfig.box_x / 100);
+    const centerY = 1350 * (pConfig.box_y / 100);
+    const boxX = centerX - (boxW / 2);
+    const boxY = centerY - (boxH / 2);
+    const curveRadius = Math.min(boxW, boxH) * (pConfig.box_curve / 100);
+
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
     ctx.clip();
     ctx.fillStyle = "#0c1710";
     ctx.fill();
 
     if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
       const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-      const size = Math.min(pw, ph);
-      const sx = (pw - size) / 2, sy = (ph - size) / 2;
-      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+      const scale = Math.max(boxW / pw, boxH / ph);
+      const sw = boxW / scale;
+      const sh = boxH / scale;
+      const sx = (pw - sw) / 2;
+      const sy = (ph - sh) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, sw, sh, boxX, boxY, boxW, boxH);
     }
     ctx.restore();
+
+    if (pConfig.show_name !== false) {
+      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const nameX = 1080 * (pConfig.name_x / 100);
+      const nameY = 1350 * (pConfig.name_y / 100);
+      const nameFontSize = Math.round(1080 * (pConfig.name_size / 100));
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${nameFontSize}px 'Playfair Display', sans-serif`;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = pConfig.name_color || "#ffffff";
+      ctx.fillText(candidateName, nameX, nameY);
+      ctx.restore();
+    }
   }
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));

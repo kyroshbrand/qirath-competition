@@ -113,7 +113,18 @@ async function uploadToStorage(bucketName, file, folder = '') {
 async function getMasterPosterFromBackend() {
   const localUrl = localStorage.getItem('AKQC_MASTER_POSTER_URL') || '';
   const localConfig = localStorage.getItem('AKQC_MASTER_POSTER_CONFIG');
-  let config = { cx: 50, cy: 44.5, radius: 20 };
+  let config = {
+    box_w: 38,
+    box_h: 40,
+    box_x: 50,
+    box_y: 44.5,
+    box_curve: 12,
+    show_name: true,
+    name_x: 50,
+    name_y: 68,
+    name_size: 4.2,
+    name_color: '#ffffff'
+  };
   if (localConfig) {
     try { config = JSON.parse(localConfig); } catch(e) {}
   }
@@ -150,7 +161,7 @@ async function getMasterPosterFromBackend() {
 /**
  * Save Master Template Poster URL and configuration
  */
-async function saveMasterPosterToBackend(url, config = { cx: 50, cy: 44.5, radius: 20 }) {
+async function saveMasterPosterToBackend(url, config = { box_w: 38, box_h: 40, box_x: 50, box_y: 44.5, box_curve: 12, show_name: true, name_x: 50, name_y: 68, name_size: 4.2, name_color: '#ffffff' }) {
   localStorage.setItem('AKQC_MASTER_POSTER_URL', url || '');
   localStorage.setItem('AKQC_MASTER_POSTER_CONFIG', JSON.stringify(config));
 

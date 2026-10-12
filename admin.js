@@ -32,8 +32,60 @@ let undoParticipantData = null;
 
 // Master Poster State
 let currentMasterPosterUrl = '';
-let currentMasterPosterConfig = { cx: 50, cy: 44.5, radius: 20 };
+let currentMasterPosterConfig = {
+  box_w: 38,
+  box_h: 40,
+  box_x: 50,
+  box_y: 44.5,
+  box_curve: 12,
+  show_name: true,
+  name_x: 50,
+  name_y: 68,
+  name_size: 4.2,
+  name_color: '#ffffff'
+};
 let posterLogoCache = null;
+
+function normalizePosterConfig(raw) {
+  const cfg = raw || {};
+  return {
+    box_w: cfg.box_w !== undefined ? parseFloat(cfg.box_w) : (cfg.radius ? parseFloat(cfg.radius) * 2 : 38),
+    box_h: cfg.box_h !== undefined ? parseFloat(cfg.box_h) : (cfg.radius ? parseFloat(cfg.radius) * 2 : 40),
+    box_x: cfg.box_x !== undefined ? parseFloat(cfg.box_x) : (cfg.cx !== undefined ? parseFloat(cfg.cx) : 50),
+    box_y: cfg.box_y !== undefined ? parseFloat(cfg.box_y) : (cfg.cy !== undefined ? parseFloat(cfg.cy) : 44.5),
+    box_curve: cfg.box_curve !== undefined ? parseFloat(cfg.box_curve) : (cfg.curve !== undefined ? parseFloat(cfg.curve) : 12),
+    show_name: cfg.show_name !== undefined ? Boolean(cfg.show_name) : true,
+    name_x: cfg.name_x !== undefined ? parseFloat(cfg.name_x) : 50,
+    name_y: cfg.name_y !== undefined ? parseFloat(cfg.name_y) : 68,
+    name_size: cfg.name_size !== undefined ? parseFloat(cfg.name_size) : 4.2,
+    name_color: cfg.name_color || '#ffffff'
+  };
+}
+
+function drawRoundedRectPath(ctx, x, y, w, h, radius) {
+  const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+  if (r === 0) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    return;
+  }
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Check session authorization
@@ -575,7 +627,7 @@ async function generatePosterBlob(details, photoImgElement) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  let masterData = { url: 'assets/master_poster_default.jpg', config: { cx: 50, cy: 44.5, radius: 20 } };
+  let masterData = { url: 'assets/master_poster_default.jpg', config: currentMasterPosterConfig };
   try {
     if (typeof getMasterPosterFromBackend === 'function') {
       masterData = await getMasterPosterFromBackend();
@@ -589,7 +641,7 @@ async function generatePosterBlob(details, photoImgElement) {
     } catch(e) {}
   }
 
-  const pConfig = masterData.config || { cx: 50, cy: 44.5, radius: 20 };
+  const pConfig = normalizePosterConfig(masterData.config);
 
   if (masterImg && masterImg.complete && masterImg.naturalWidth > 0) {
     // 1. Draw Master Template Poster at Instagram post size / master resolution
@@ -597,33 +649,57 @@ async function generatePosterBlob(details, photoImgElement) {
     canvas.height = masterImg.naturalHeight || 1350;
     ctx.drawImage(masterImg, 0, 0, canvas.width, canvas.height);
 
-    // 2. Middle round circle coordinates (auto attached)
-    const cx = canvas.width * ((pConfig.cx || 50) / 100);
-    const cy = canvas.height * ((pConfig.cy || 44.5) / 100);
-    const radius = canvas.width * ((pConfig.radius || 20) / 100);
+    // 2. Middle photo box coordinates (size, curve, position)
+    const boxW = canvas.width * (pConfig.box_w / 100);
+    const boxH = canvas.height * (pConfig.box_h / 100);
+    const centerX = canvas.width * (pConfig.box_x / 100);
+    const centerY = canvas.height * (pConfig.box_y / 100);
+    const boxX = centerX - (boxW / 2);
+    const boxY = centerY - (boxH / 2);
+    const curveRadius = Math.min(boxW, boxH) * (pConfig.box_curve / 100);
 
-    // Circular Face Photo Frame (NO STROKE, NO BORDER - PURE CLEAN CLIP)
+    // Box Face Photo Frame with Adjustable Curve & Size (NO STROKE, NO BORDER)
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
     ctx.clip();
     ctx.fillStyle = "#0c1710";
     ctx.fill();
 
     if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
       const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-      const size = Math.min(pw, ph);
-      const sx = (pw - size) / 2, sy = (ph - size) / 2;
-      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+      const scale = Math.max(boxW / pw, boxH / ph);
+      const sw = boxW / scale;
+      const sh = boxH / scale;
+      const sx = (pw - sw) / 2;
+      const sy = (ph - sh) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, sw, sh, boxX, boxY, boxW, boxH);
     } else {
       ctx.fillStyle = "#d4a73b";
-      ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+      ctx.font = `800 ${Math.round(canvas.width * 0.08)}px 'Playfair Display', serif`;
       ctx.textAlign = "center";
-      ctx.fillText("RP", cx, cy + (radius * 0.3));
+      ctx.textBaseline = "middle";
+      ctx.fillText("RP", centerX, centerY);
     }
     ctx.restore();
 
-    // Pure poster graphic: No text overlay drawn because master template has official typography
+    // 3. Participant Name in CAPS (Admin-adjustable position, size & color)
+    if (pConfig.show_name !== false) {
+      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const nameX = canvas.width * (pConfig.name_x / 100);
+      const nameY = canvas.height * (pConfig.name_y / 100);
+      const nameFontSize = Math.round(canvas.width * (pConfig.name_size / 100));
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
+      ctx.fillStyle = pConfig.name_color || "#ffffff";
+      ctx.fillText(candidateName, nameX, nameY);
+      ctx.restore();
+    }
+
   } else {
     // Default Royal Poster Generator Fallback (Instagram Portrait Post: 1080 x 1350)
     canvas.width = 1080;
@@ -636,21 +712,47 @@ async function generatePosterBlob(details, photoImgElement) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1080, 1350);
 
-    const cx = 540, cy = 600, radius = 220;
+    const boxW = 1080 * (pConfig.box_w / 100);
+    const boxH = 1350 * (pConfig.box_h / 100);
+    const centerX = 1080 * (pConfig.box_x / 100);
+    const centerY = 1350 * (pConfig.box_y / 100);
+    const boxX = centerX - (boxW / 2);
+    const boxY = centerY - (boxH / 2);
+    const curveRadius = Math.min(boxW, boxH) * (pConfig.box_curve / 100);
+
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
     ctx.clip();
     ctx.fillStyle = "#0d1b11";
     ctx.fill();
 
     if (photoImgElement && photoImgElement.complete && photoImgElement.naturalWidth > 0) {
       const pw = photoImgElement.naturalWidth, ph = photoImgElement.naturalHeight;
-      const size = Math.min(pw, ph);
-      const sx = (pw - size) / 2, sy = (ph - size) / 2;
-      ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
+      const scale = Math.max(boxW / pw, boxH / ph);
+      const sw = boxW / scale;
+      const sh = boxH / scale;
+      const sx = (pw - sw) / 2;
+      const sy = (ph - sh) / 2;
+      ctx.drawImage(photoImgElement, sx, sy, sw, sh, boxX, boxY, boxW, boxH);
     }
     ctx.restore();
+
+    if (pConfig.show_name !== false) {
+      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const nameX = 1080 * (pConfig.name_x / 100);
+      const nameY = 1350 * (pConfig.name_y / 100);
+      const nameFontSize = Math.round(1080 * (pConfig.name_size / 100));
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${nameFontSize}px 'Playfair Display', sans-serif`;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = pConfig.name_color || "#ffffff";
+      ctx.fillText(candidateName, nameX, nameY);
+      ctx.restore();
+    }
   }
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -753,25 +855,63 @@ async function initMasterPosterStudio() {
   const fileInput = document.getElementById('inputMasterPosterFile');
   const resetBtn = document.getElementById('btnResetMasterPoster');
   const saveBtn = document.getElementById('btnSaveMasterPosterConfig');
-  const sliderY = document.getElementById('sliderCircleY');
-  const sliderX = document.getElementById('sliderCircleX');
-  const sliderRadius = document.getElementById('sliderCircleRadius');
-  const labelY = document.getElementById('labelCircleY');
-  const labelX = document.getElementById('labelCircleX');
-  const labelRadius = document.getElementById('labelCircleRadius');
+
+  // Box Sliders & Labels
+  const sliderBoxW = document.getElementById('sliderBoxW');
+  const sliderBoxH = document.getElementById('sliderBoxH');
+  const sliderBoxCurve = document.getElementById('sliderBoxCurve');
+  const sliderBoxX = document.getElementById('sliderBoxX');
+  const sliderBoxY = document.getElementById('sliderBoxY');
+  const labelBoxW = document.getElementById('labelBoxW');
+  const labelBoxH = document.getElementById('labelBoxH');
+  const labelBoxCurve = document.getElementById('labelBoxCurve');
+  const labelBoxX = document.getElementById('labelBoxX');
+  const labelBoxY = document.getElementById('labelBoxY');
+
+  // Name in CAPS Sliders & Labels
+  const checkShowName = document.getElementById('checkShowName');
+  const sliderNameY = document.getElementById('sliderNameY');
+  const sliderNameX = document.getElementById('sliderNameX');
+  const sliderNameSize = document.getElementById('sliderNameSize');
+  const pickerNameColor = document.getElementById('pickerNameColor');
+  const labelNameY = document.getElementById('labelNameY');
+  const labelNameX = document.getElementById('labelNameX');
+  const labelNameSize = document.getElementById('labelNameSize');
+  const labelNameColor = document.getElementById('labelNameColor');
+
+  function syncStudioUI() {
+    const cfg = currentMasterPosterConfig;
+    if (sliderBoxW) sliderBoxW.value = cfg.box_w;
+    if (sliderBoxH) sliderBoxH.value = cfg.box_h;
+    if (sliderBoxCurve) sliderBoxCurve.value = cfg.box_curve;
+    if (sliderBoxX) sliderBoxX.value = cfg.box_x;
+    if (sliderBoxY) sliderBoxY.value = cfg.box_y;
+
+    if (labelBoxW) labelBoxW.textContent = cfg.box_w + '%';
+    if (labelBoxH) labelBoxH.textContent = cfg.box_h + '%';
+    if (labelBoxCurve) labelBoxCurve.textContent = cfg.box_curve + '%';
+    if (labelBoxX) labelBoxX.textContent = cfg.box_x + '%';
+    if (labelBoxY) labelBoxY.textContent = cfg.box_y + '%';
+
+    if (checkShowName) checkShowName.checked = cfg.show_name !== false;
+    if (sliderNameY) sliderNameY.value = cfg.name_y;
+    if (sliderNameX) sliderNameX.value = cfg.name_x;
+    if (sliderNameSize) sliderNameSize.value = cfg.name_size;
+    if (pickerNameColor) pickerNameColor.value = cfg.name_color || '#ffffff';
+
+    if (labelNameY) labelNameY.textContent = cfg.name_y + '%';
+    if (labelNameX) labelNameX.textContent = cfg.name_x + '%';
+    if (labelNameSize) labelNameSize.textContent = cfg.name_size + '%';
+    if (labelNameColor) labelNameColor.textContent = (cfg.name_color || '#ffffff').toUpperCase();
+  }
 
   if (openBtn && modal) {
     openBtn.addEventListener('click', async () => {
       modal.classList.add('open');
       const data = await getMasterPosterFromBackend();
       currentMasterPosterUrl = data.url;
-      currentMasterPosterConfig = data.config || { cx: 50, cy: 44.5, radius: 20 };
-      if (sliderY) sliderY.value = currentMasterPosterConfig.cy;
-      if (sliderX) sliderX.value = currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50;
-      if (sliderRadius) sliderRadius.value = currentMasterPosterConfig.radius;
-      if (labelY) labelY.textContent = currentMasterPosterConfig.cy + '%';
-      if (labelX) labelX.textContent = (currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50) + '%';
-      if (labelRadius) labelRadius.textContent = currentMasterPosterConfig.radius + '%';
+      currentMasterPosterConfig = normalizePosterConfig(data.config);
+      syncStudioUI();
       updateMasterPosterStatusLabel();
       await renderMasterPosterPreview();
     });
@@ -816,26 +956,36 @@ async function initMasterPosterStudio() {
     });
   }
 
-  if (sliderY) {
-    sliderY.addEventListener('input', () => {
-      currentMasterPosterConfig.cy = parseFloat(sliderY.value);
-      if (labelY) labelY.textContent = sliderY.value + '%';
+  const bindRangeInput = (el, prop, label, suffix = '%') => {
+    if (!el) return;
+    el.addEventListener('input', () => {
+      currentMasterPosterConfig[prop] = parseFloat(el.value);
+      if (label) label.textContent = el.value + suffix;
+      renderMasterPosterPreview();
+    });
+  };
+
+  bindRangeInput(sliderBoxW, 'box_w', labelBoxW);
+  bindRangeInput(sliderBoxH, 'box_h', labelBoxH);
+  bindRangeInput(sliderBoxCurve, 'box_curve', labelBoxCurve);
+  bindRangeInput(sliderBoxX, 'box_x', labelBoxX);
+  bindRangeInput(sliderBoxY, 'box_y', labelBoxY);
+
+  if (checkShowName) {
+    checkShowName.addEventListener('change', () => {
+      currentMasterPosterConfig.show_name = checkShowName.checked;
       renderMasterPosterPreview();
     });
   }
 
-  if (sliderX) {
-    sliderX.addEventListener('input', () => {
-      currentMasterPosterConfig.cx = parseFloat(sliderX.value);
-      if (labelX) labelX.textContent = sliderX.value + '%';
-      renderMasterPosterPreview();
-    });
-  }
+  bindRangeInput(sliderNameY, 'name_y', labelNameY);
+  bindRangeInput(sliderNameX, 'name_x', labelNameX);
+  bindRangeInput(sliderNameSize, 'name_size', labelNameSize);
 
-  if (sliderRadius) {
-    sliderRadius.addEventListener('input', () => {
-      currentMasterPosterConfig.radius = parseFloat(sliderRadius.value);
-      if (labelRadius) labelRadius.textContent = sliderRadius.value + '%';
+  if (pickerNameColor) {
+    pickerNameColor.addEventListener('input', () => {
+      currentMasterPosterConfig.name_color = pickerNameColor.value;
+      if (labelNameColor) labelNameColor.textContent = pickerNameColor.value.toUpperCase();
       renderMasterPosterPreview();
     });
   }
@@ -860,13 +1010,19 @@ async function initMasterPosterStudio() {
     resetBtn.addEventListener('click', async () => {
       if (confirm("Reset to default Royal Emerald & Gold Master Poster?")) {
         currentMasterPosterUrl = 'assets/master_poster_default.jpg';
-        currentMasterPosterConfig = { cx: 50, cy: 44.5, radius: 20 };
-        if (sliderY) sliderY.value = 44.5;
-        if (sliderX) sliderX.value = 50;
-        if (sliderRadius) sliderRadius.value = 20;
-        if (labelY) labelY.textContent = '44.5%';
-        if (labelX) labelX.textContent = '50%';
-        if (labelRadius) labelRadius.textContent = '20%';
+        currentMasterPosterConfig = {
+          box_w: 38,
+          box_h: 40,
+          box_x: 50,
+          box_y: 44.5,
+          box_curve: 12,
+          show_name: true,
+          name_x: 50,
+          name_y: 68,
+          name_size: 4.2,
+          name_color: '#ffffff'
+        };
+        syncStudioUI();
         await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
         updateMasterPosterStatusLabel();
         await renderMasterPosterPreview();
@@ -913,14 +1069,18 @@ async function renderMasterPosterPreview() {
   canvas.height = posterImg.naturalHeight || 1350;
   ctx.drawImage(posterImg, 0, 0, canvas.width, canvas.height);
 
-  const cx = canvas.width * ((currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50) / 100);
-  const cy = canvas.height * ((currentMasterPosterConfig.cy !== undefined ? currentMasterPosterConfig.cy : 44.5) / 100);
-  const radius = canvas.width * ((currentMasterPosterConfig.radius !== undefined ? currentMasterPosterConfig.radius : 20) / 100);
+  const cfg = normalizePosterConfig(currentMasterPosterConfig);
+  const boxW = canvas.width * (cfg.box_w / 100);
+  const boxH = canvas.height * (cfg.box_h / 100);
+  const centerX = canvas.width * (cfg.box_x / 100);
+  const centerY = canvas.height * (cfg.box_y / 100);
+  const boxX = centerX - (boxW / 2);
+  const boxY = centerY - (boxH / 2);
+  const curveRadius = Math.min(boxW, boxH) * (cfg.box_curve / 100);
 
-  // Draw Sample Face inside the middle circular frame (NO STROKE, NO BORDER - PURE CLEAN CLIP)
+  // 1. Draw Sample Face inside the adjustable Box with Curve (NO STROKE, NO BORDER)
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
   ctx.clip();
   ctx.fillStyle = "#0d1b11";
   ctx.fill();
@@ -929,17 +1089,37 @@ async function renderMasterPosterPreview() {
   try {
     const logoImg = await getPosterLogo();
     if (logoImg) {
-      ctx.drawImage(logoImg, cx - (radius * 0.7), cy - (radius * 0.7), radius * 1.4, radius * 1.4);
+      const scale = Math.min(boxW / logoImg.naturalWidth, boxH / logoImg.naturalHeight) * 0.85;
+      const lw = logoImg.naturalWidth * scale;
+      const lh = logoImg.naturalHeight * scale;
+      ctx.drawImage(logoImg, centerX - lw / 2, centerY - lh / 2, lw, lh);
     }
   } catch(e) {
     ctx.fillStyle = "#d4a73b";
-    ctx.font = `800 ${Math.round(canvas.width * 0.09)}px 'Playfair Display', serif`;
+    ctx.font = `800 ${Math.round(canvas.width * 0.08)}px 'Playfair Display', serif`;
     ctx.textAlign = "center";
-    ctx.fillText("RP", cx, cy + (radius * 0.3));
+    ctx.textBaseline = "middle";
+    ctx.fillText("RP", centerX, centerY);
   }
   ctx.restore();
 
-  // No text overlay drawn on poster: official typography is preserved entirely from master poster graphic
+  // 2. Draw Sample Candidate Name in ALL CAPS (Adjustable place, size & color)
+  if (cfg.show_name !== false) {
+    const sampleName = "SAMPLE PARTICIPANT NAME";
+    const nameX = canvas.width * (cfg.name_x / 100);
+    const nameY = canvas.height * (cfg.name_y / 100);
+    const nameFontSize = Math.round(canvas.width * (cfg.name_size / 100));
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+    ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
+    ctx.fillStyle = cfg.name_color || "#ffffff";
+    ctx.fillText(sampleName, nameX, nameY);
+    ctx.restore();
+  }
 }
 
 // ====================================================================
