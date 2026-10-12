@@ -103,7 +103,7 @@ function initFormInteractions() {
   setupFilePicker('waShotInput', 'waShotBox', 'waShotPreview', 'image');
 
   // Input event listeners for validation
-  ['fullName', 'age', 'phone', 'whatsapp', 'address', 'surah', 'termsAgree'].forEach(id => {
+  ['fullName', 'age', 'phone', 'whatsapp', 'address', 'termsAgree'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', checkFormValidity);
   });
@@ -183,7 +183,6 @@ function getFormState() {
     whatsapp: /^[6-9]\d{9}$/.test(wa),
     address: address.length >= 5,
     branch: !!branch,
-    surah: surah.length >= 2,
     aadhaar: !!aadhaar,
     video: !!video,
     igShot: !!igShot,
@@ -276,7 +275,7 @@ async function handleFormSubmit(e) {
       address: document.getElementById('address').value.trim(),
       district: document.getElementById('district')?.value.trim() || "Karnataka",
       branch: document.querySelector('input[name="branch"]:checked').value,
-      surah_recited: document.getElementById('surah').value.trim(),
+      surah_recited: "",
       maqam_style: document.getElementById('maqam')?.value || "Standard",
       aadhaar_url: aadhaarUrl,
       video_url: videoUrl,

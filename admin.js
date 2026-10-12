@@ -286,8 +286,13 @@ function renderTableRows() {
           </button>
         </td>
         <td>
-          <span style="color:var(--text-gold); font-weight:500;">📖 ${escapeHtml(p.surah_recited || 'N/A')}</span>
-          ${p.maqam_style ? `<div style="font-size:11.5px; color:var(--text-muted);">Style: ${p.maqam_style}</div>` : ''}
+          ${p.video_url ? `
+            <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-weight:600; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+              🎥 Play Video
+            </a>
+          ` : `<span style="color:var(--text-muted); font-size:11.5px;">No video</span>`}
+          ${p.surah_recited ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">📖 ${escapeHtml(p.surah_recited)}</div>` : ''}
+          ${p.maqam_style ? `<div style="font-size:11px; color:var(--text-muted);">Style: ${p.maqam_style}</div>` : ''}
         </td>
         <td>
           <span class="status-pill ${statusClass}">${p.status}</span>
@@ -841,6 +846,58 @@ async function adminDeletePosterPhoto(regId) {
   }
 }
 
+// Remove Candidate Video from Admin
+async function adminDeleteCandidateVideo(regId) {
+  if (!confirm("Are you sure you want to delete / remove the Qirath video from this candidate's entry?")) return;
+
+  const p = allParticipants.find(item => item.registration_id === regId);
+  if (!p) return;
+
+  try {
+    if (p.video_url && !p.video_url.includes('drive.google.com') && !p.video_url.includes('youtu') && isSupabaseConfigured()) {
+      await deleteFromStorage('qirath-videos', p.video_url);
+    }
+    await updateParticipantInBackend(p.registration_id, { video_url: null });
+
+    p.video_url = null;
+    const idx = allParticipants.findIndex(item => item.registration_id === regId);
+    if (idx !== -1) allParticipants[idx].video_url = null;
+
+    openReviewDossier(regId);
+    renderTableRows();
+    alert("✅ Candidate Qirath video deleted successfully.");
+  } catch (err) {
+    console.error("Failed to remove video:", err);
+    alert("Error removing video: " + err.message);
+  }
+}
+
+// Remove Candidate Aadhaar from Admin
+async function adminDeleteCandidateAadhaar(regId) {
+  if (!confirm("Are you sure you want to delete / remove the Aadhaar card from this candidate's entry?")) return;
+
+  const p = allParticipants.find(item => item.registration_id === regId);
+  if (!p) return;
+
+  try {
+    if (p.aadhaar_url && isSupabaseConfigured()) {
+      await deleteFromStorage('aadhaar-cards', p.aadhaar_url);
+    }
+    await updateParticipantInBackend(p.registration_id, { aadhaar_url: null });
+
+    p.aadhaar_url = null;
+    const idx = allParticipants.findIndex(item => item.registration_id === regId);
+    if (idx !== -1) allParticipants[idx].aadhaar_url = null;
+
+    openReviewDossier(regId);
+    renderTableRows();
+    alert("✅ Candidate Aadhaar card deleted successfully.");
+  } catch (err) {
+    console.error("Failed to remove Aadhaar:", err);
+    alert("Error removing Aadhaar: " + err.message);
+  }
+}
+
 // ====================================================================
 // PERMANENT MASTER POSTER TEMPLATE STUDIO CONTROLLER
 // Allows admin to upload & change permanent master poster background
@@ -1195,20 +1252,36 @@ function openReviewDossier(regId) {
               </a>
               <small style="display:block; color:var(--text-muted); margin-top:8px; font-size:11px; word-break:break-all;">${participant.video_url}</small>
             </div>
-          ` : `
+          ` : participant.video_url ? `
             <video src="${participant.video_url}" controls style="width:100%; max-height:260px; display:block;" preload="metadata"></video>
             <div style="padding:6px 12px; background:#07120a; text-align:right;">
               <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-size:11px; text-decoration:none;">⬇️ Open Original Video</a>
             </div>
+          ` : `
+            <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">No video file attached.</div>
           `}
+          ${participant.video_url ? `
+            <div style="padding:8px 12px; background:#0b140e; border-top:1px solid #1a2a1e; text-align:right;">
+              <button type="button" class="btn-table-action" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;" onclick="adminDeleteCandidateVideo('${participant.registration_id}')">
+                🗑️ Delete / Remove Video
+              </button>
+            </div>
+          ` : ''}
         </div>
 
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
           🆔 Aadhaar Card Verification
         </h4>
         <div style="background:#000; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); overflow:hidden; text-align:center; padding:10px; margin-bottom:18px;">
-          <img src="${participant.aadhaar_url}" alt="Aadhaar photo" style="max-width:100%; max-height:190px; object-fit:contain; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.aadhaar_url}', '_blank')">
-          <small style="color:var(--text-muted); display:block; margin-top:4px; font-size:11px;">Click photo to inspect full resolution</small>
+          ${participant.aadhaar_url ? `
+            <img src="${participant.aadhaar_url}" alt="Aadhaar photo" style="max-width:100%; max-height:190px; object-fit:contain; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.aadhaar_url}', '_blank')">
+            <small style="color:var(--text-muted); display:block; margin:4px 0 8px; font-size:11px;">Click photo to inspect full resolution</small>
+            <div style="text-align:right;">
+              <button type="button" class="btn-table-action" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;" onclick="adminDeleteCandidateAadhaar('${participant.registration_id}')">
+                🗑️ Delete / Remove Aadhaar
+              </button>
+            </div>
+          ` : `<span style="color:var(--text-muted); font-size:12px;">No Aadhaar card uploaded.</span>`}
         </div>
 
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
@@ -1242,7 +1315,7 @@ function openReviewDossier(regId) {
             <tr><td style="color:var(--text-muted); width:32%;">Phone:</td><td><strong style="color:#fff;">${participant.phone}</strong></td></tr>
             <tr><td style="color:var(--text-muted);">WhatsApp:</td><td><strong style="color:#fff;">${participant.whatsapp || participant.phone}</strong></td></tr>
             <tr><td style="color:var(--text-muted);">Address:</td><td style="color:#d8d3c5;">${escapeHtml(participant.address || 'N/A')}, ${escapeHtml(participant.district || '')}</td></tr>
-            <tr><td style="color:var(--text-muted);">Surah Recited:</td><td><strong style="color:var(--gold-200);">📖 ${escapeHtml(participant.surah_recited || 'N/A')}</strong></td></tr>
+            ${participant.surah_recited ? `<tr><td style="color:var(--text-muted);">Surah Recited:</td><td><strong style="color:var(--gold-200);">📖 ${escapeHtml(participant.surah_recited)}</strong></td></tr>` : ''}
             <tr><td style="color:var(--text-muted);">Recitation Maqam:</td><td style="color:#fff;">${participant.maqam_style || 'Standard'}</td></tr>
           </table>
         </div>

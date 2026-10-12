@@ -793,6 +793,118 @@
       background: #1a271f;
       color: #fff;
     }
+
+    /* Delete Uploaded File Button */
+    .btn-delete-upload {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      font-family: var(--sans);
+      transition: all 0.2s ease;
+    }
+    .btn-delete-upload:hover {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+
+    /* Submit Button States */
+    .btn-ready-action {
+      background: linear-gradient(135deg, #152219 0%, #0c1811 100%) !important;
+      color: #fae8b2 !important;
+      border: 1.5px solid #d4a73b !important;
+      box-shadow: 0 6px 25px rgba(212, 167, 59, 0.4) !important;
+      cursor: pointer !important;
+      animation: readyPulse 2s infinite ease-in-out;
+    }
+    @keyframes readyPulse {
+      0% { box-shadow: 0 6px 20px rgba(212, 167, 59, 0.35); }
+      50% { box-shadow: 0 8px 30px rgba(212, 167, 59, 0.7); }
+      100% { box-shadow: 0 6px 20px rgba(212, 167, 59, 0.35); }
+    }
+
+    .btn-pending-action {
+      background: linear-gradient(135deg, #231c12 0%, #161208 100%) !important;
+      color: #fed7aa !important;
+      border: 1.5px solid #f59e0b !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25) !important;
+    }
+    .btn-pending-action:hover {
+      background: linear-gradient(135deg, #382c18 0%, #20170a 100%) !important;
+      border-color: #fbbf24 !important;
+      transform: translateY(-1px);
+    }
+
+    /* Auto-scroll Field Attention Pulse */
+    @keyframes fieldPulseGlow {
+      0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+        transform: scale(1);
+      }
+      30% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.5), 0 0 24px rgba(245, 158, 11, 0.6);
+        transform: scale(1.015);
+      }
+      60% {
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5);
+        transform: scale(1.008);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        transform: scale(1);
+      }
+    }
+
+    .field-pending-pulse {
+      animation: fieldPulseGlow 1.2s ease-in-out 3 !important;
+      outline: 3px solid #f59e0b !important;
+      outline-offset: 4px !important;
+      border-radius: 8px !important;
+      scroll-margin-top: 100px;
+    }
+
+    /* Floating Toast */
+    .pending-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f1812;
+      color: #fff;
+      border: 1.5px solid #d4a73b;
+      border-radius: 12px;
+      padding: 12px 20px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 20px rgba(212, 167, 59, 0.35);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 92vw;
+      box-sizing: border-box;
+      animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUpToast {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
   </style>
 </head>
 <body>
@@ -849,11 +961,6 @@
       </div>
 
       <div class="f">
-        <label class="t" for="surah">Surah &amp; Ayah Recited<u>*</u></label>
-        <input id="surah" type="text" placeholder="e.g. Surah Al-Mulk (Ayah 1-15)" required>
-      </div>
-
-      <div class="f">
         <span class="t">Nearest Reid &amp; Premium branch<u>*</u></span>
         <div class="br" id="br">
           <!-- Rendered by JS: Puttur, Thokkotu, B.C Road, Sullia -->
@@ -906,7 +1013,10 @@
 
         <!-- Mode 2: Google Drive / YouTube Link -->
         <div id="wrap_vid_link" style="display:none;">
-          <input id="video_link" type="text" placeholder="https://drive.google.com/... or YouTube link">
+          <div style="display:flex; gap:8px;">
+            <input id="video_link" type="text" placeholder="https://drive.google.com/... or YouTube link" style="flex:1;">
+            <button type="button" id="btn_clear_vid_link" style="display:none; padding:8px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#dc2626; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; white-space:nowrap; font-family:var(--sans);" onclick="$('video_link').value=''; this.style.display='none'; refresh();">🗑️ Delete Link</button>
+          </div>
           <small style="color:var(--mut); display:block; margin-top:8px; font-size:12px; line-height:1.5;">
             💡 <strong>Recommended if video exceeds 100MB or for instant upload:</strong> Upload to Google Drive (set to <em>“Anyone with link can view”</em>) or YouTube and paste link here.
           </small>
@@ -952,8 +1062,8 @@
 
       <div style="height:12px"></div>
 
-      <button id="go" type="submit" disabled>Submit entry</button>
-      <div class="hint" id="hint">Upload both follow screenshots to enable Submit</div>
+      <button id="go" type="submit" class="btn-pending-action">Submit entry</button>
+      <div class="hint" id="hint">Complete required fields to submit</div>
       
       <div class="bar" id="bar">
         <div></div>
@@ -1015,9 +1125,32 @@ $("tab_vid_link").addEventListener("click", () => {
   refresh();
 });
 
-$("video_link").addEventListener("input", refresh);
+$("video_link").addEventListener("input", () => {
+  const btn = $("btn_clear_vid_link");
+  if (btn) btn.style.display = $("video_link").value.trim() ? "inline-flex" : "none";
+  refresh();
+});
 
-// Instant File Previews & Pre-Upload Validation
+// Clear Uploaded File Function
+function clearFile(id) {
+  const input = $(id);
+  if (input) input.value = "";
+  const box = $("p_" + id);
+  if (box) box.innerHTML = "";
+  const label = $("l_" + id);
+  if (label) label.classList.remove("done");
+  if (id === "video") {
+    const warn = $("vid_warn");
+    if (warn) warn.style.display = "none";
+  }
+  if (id === "photo") {
+    activeParticipantPhotoBlob = null;
+  }
+  refresh();
+}
+window.clearFile = clearFile;
+
+// Instant File Previews & Pre-Upload Validation with Delete Option
 ["photo", "aadhaar", "video", "igshot", "washot"].forEach(id => {
   $(id).addEventListener("change", () => {
     const f = $(id).files[0], box = $("p_" + id);
@@ -1054,7 +1187,19 @@ $("video_link").addEventListener("input", refresh);
       const p = document.createElement("div");
       p.className = "fn";
       p.textContent = "✓ " + f.name + " (" + size(f.size) + ")";
-      box.append(el, p);
+
+      // Delete / Remove Uploaded File Button
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-delete-upload";
+      delBtn.innerHTML = `🗑️ Delete / Remove Uploaded File`;
+      delBtn.title = "Delete this uploaded file";
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        clearFile(id);
+      };
+
+      box.append(el, p, delBtn);
     }
     refresh();
   });
@@ -1122,7 +1267,134 @@ function compressImage(file, maxDimension = 1400, quality = 0.8) {
   });
 }
 
-// Form state validation (Only one category: Age 8 to 18)
+// Field metadata mapping for auto-scroll and human-friendly pending announcements
+const FIELD_MAP = {
+  name: {
+    label: "Participant Full Name",
+    getElement: () => $("name"),
+    getContainer: () => $("name").closest(".f")
+  },
+  age: {
+    label: "Valid Age (8 to 18 years)",
+    getElement: () => $("age"),
+    getContainer: () => $("age").closest(".f")
+  },
+  phone: {
+    label: "10-Digit Mobile / WhatsApp Number",
+    getElement: () => $("phone"),
+    getContainer: () => $("phone").closest(".f")
+  },
+  place: {
+    label: "Place / Residential Address",
+    getElement: () => $("place"),
+    getContainer: () => $("place").closest(".f")
+  },
+  branch: {
+    label: "Nearest Reid & Premium Branch",
+    getElement: () => $("br"),
+    getContainer: () => $("br").closest(".f")
+  },
+  photo: {
+    label: "Participant Face Photo / Portrait Image",
+    getElement: () => $("photo"),
+    getContainer: () => $("l_photo")
+  },
+  aadhaar: {
+    label: "Aadhaar Card Document",
+    getElement: () => $("aadhaar"),
+    getContainer: () => $("l_aadhaar")
+  },
+  video: {
+    label: "Qirath Video (Upload file up to 100MB or Google Drive Link)",
+    getElement: () => videoMode === "link" ? $("video_link") : $("video"),
+    getContainer: () => $("tab_vid_file").closest(".f")
+  },
+  igshot: {
+    label: "Instagram Follow Screenshot",
+    getElement: () => $("igshot"),
+    getContainer: () => $("l_igshot")
+  },
+  washot: {
+    label: "WhatsApp Channel Screenshot",
+    getElement: () => $("washot"),
+    getContainer: () => $("l_washot")
+  },
+  ok: {
+    label: "Competition Agreement Checkbox",
+    getElement: () => $("ok"),
+    getContainer: () => $("ok").closest(".chk")
+  }
+};
+
+// Auto-scroll to first pending field with glowing pulse highlight
+function scrollToFirstPending(pendingKeys) {
+  if (!pendingKeys || !pendingKeys.length) return;
+  const firstKey = pendingKeys[0];
+  const meta = FIELD_MAP[firstKey];
+  if (!meta) return;
+
+  const targetEl = meta.getElement ? meta.getElement() : null;
+  const containerEl = (meta.getContainer ? meta.getContainer() : null) || targetEl;
+
+  if (containerEl) {
+    document.querySelectorAll(".field-pending-pulse").forEach(el => el.classList.remove("field-pending-pulse"));
+    containerEl.classList.add("field-pending-pulse");
+
+    containerEl.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    setTimeout(() => {
+      if (targetEl && typeof targetEl.focus === "function") {
+        try { targetEl.focus(); } catch(e) {}
+      }
+    }, 450);
+
+    setTimeout(() => {
+      containerEl.classList.remove("field-pending-pulse");
+    }, 4000);
+  }
+
+  showPendingToast(pendingKeys);
+}
+window.scrollToFirstPending = scrollToFirstPending;
+
+// Show interactive floating toast banner
+function showPendingToast(pendingKeys) {
+  let toast = $("pendingToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "pendingToast";
+    toast.className = "pending-toast";
+    document.body.appendChild(toast);
+  }
+
+  const firstMeta = FIELD_MAP[pendingKeys[0]];
+  const count = pendingKeys.length;
+  const names = pendingKeys.map(k => FIELD_MAP[k]?.label?.split(" (")[0] || k).slice(0, 3).join(", ");
+  const extra = count > 3 ? ` +${count - 3} more` : "";
+
+  toast.innerHTML = `
+    <span style="font-size:20px;">⚠️</span>
+    <div style="flex:1; text-align:left;">
+      <div style="color:#d4a73b; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">
+        ${count} Pending Item${count > 1 ? 's' : ''} Left:
+      </div>
+      <div style="color:#ffffff; font-size:13px; font-weight:700; line-height:1.3;">
+        Please complete <strong>${firstMeta?.label?.split(" (")[0]}</strong>
+      </div>
+      <div style="color:#a8a29e; font-size:11px; margin-top:2px;">
+        Pending: ${names}${extra}
+      </div>
+    </div>
+  `;
+
+  toast.style.display = "flex";
+  if (window._toastTimer) clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 4500);
+}
+
+// Form state validation (Surah removed; Only one category: Age 8 to 18)
 function state() {
   const age = +$("age").value;
   const vidFile = $("video").files[0];
@@ -1135,7 +1407,6 @@ function state() {
     age: age >= 8 && age <= 18,
     phone: /^[6-9]\d{9}$/.test($("phone").value),
     place: $("place").value.trim().length >= 4,
-    surah: $("surah").value.trim().length >= 2,
     branch: !!document.querySelector('input[name=branch]:checked'),
     photo: !!$("photo").files[0],
     aadhaar: !!$("aadhaar").files[0],
@@ -1147,30 +1418,43 @@ function state() {
 }
 
 function refresh() {
-  const s = state(), miss = Object.keys(s).filter(k => !s[k]), shots = s.igshot && s.washot;
+  const s = state();
+  const miss = Object.keys(s).filter(k => !s[k]);
   const vidFile = $("video").files[0];
   const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
   const age = +$("age").value;
   const ageInvalid = age && (age < 8 || age > 18);
 
-  $("go").disabled = miss.length > 0 || vidOversized;
-  
-  if (ageInvalid) {
-    $("hint").textContent = "⚠️ Candidate age must be between 08 and 18 years.";
-  } else if (vidOversized) {
-    $("hint").textContent = "⚠️ Video exceeds 100MB. Select a clip up to 100MB or switch to Google Drive link.";
-  } else if (!s.photo) {
-    $("hint").textContent = "Upload participant face photo to enable Submit";
-  } else if (!shots) {
-    $("hint").textContent = "Upload both follow screenshots to enable Submit";
-  } else if (miss.length > 0) {
-    $("hint").textContent = "Complete remaining fields to enable Submit";
+  const go = $("go");
+  const hint = $("hint");
+
+  if (miss.length === 0 && !vidOversized) {
+    go.disabled = false;
+    go.classList.remove("btn-pending-action");
+    go.classList.add("btn-ready-action");
+    go.innerHTML = "✓ SUBMIT OFFICIAL ENTRY";
+    hint.innerHTML = `<span style="color:#16a34a; font-weight:700;">🟢 All requirements completed – Tap Submit to register!</span>`;
   } else {
-    $("hint").textContent = "All set – tap Submit";
+    // Keep button clickable so tapping it automatically announces and scrolls to pending field
+    go.disabled = false;
+    go.classList.remove("btn-ready-action");
+    go.classList.add("btn-pending-action");
+
+    const firstMeta = FIELD_MAP[miss[0]] || { label: "Required Field" };
+    go.innerHTML = `SUBMIT ENTRY (${miss.length} PENDING — TAP TO FILL)`;
+
+    if (ageInvalid) {
+      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Candidate age must be between 08 and 18 years.</span>`;
+    } else if (vidOversized) {
+      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Video exceeds 100MB. Select clip up to 100MB or switch to Google Drive link.</span>`;
+    } else {
+      const shortName = firstMeta.label.split(" (")[0];
+      hint.innerHTML = `⚠️ Next to fill: <strong style="color:#d97706; text-decoration:underline; cursor:pointer;" onclick="scrollToFirstPending(['${miss[0]}'])">${shortName}</strong> (tap submit to auto-scroll)`;
+    }
   }
 }
 
-["name", "age", "phone", "place", "surah", "ok"].forEach(i => $(i).addEventListener("input", refresh));
+["name", "age", "phone", "place", "ok"].forEach(i => $(i).addEventListener("input", refresh));
 $("br").addEventListener("change", refresh);
 refresh();
 
@@ -1396,7 +1680,16 @@ async function generatePosterBlob(details, photoImgElement) {
 // Form Submit with Parallel Uploads & Instant Poster Generation
 $("f").addEventListener("submit", async e => {
   e.preventDefault();
-  if (Object.values(state()).includes(false)) return;
+  const s = state();
+  const miss = Object.keys(s).filter(k => !s[k]);
+  const vidFile = $("video").files[0];
+  const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
+
+  if (miss.length > 0 || vidOversized) {
+    if (vidOversized && !miss.includes("video")) miss.unshift("video");
+    scrollToFirstPending(miss);
+    return;
+  }
 
   const br = document.querySelector('input[name=branch]:checked');
   const bar = $("bar"), go = $("go"), hint = $("hint");
@@ -1459,7 +1752,7 @@ $("f").addEventListener("submit", async e => {
       whatsapp: "+91 " + $("phone").value.trim(),
       address: $("place").value.trim(),
       branch: br.value,
-      surah_recited: $("surah").value.trim(),
+      surah_recited: "",
       photo_url: photoUrl,
       aadhaar_url: aadhaarUrl,
       video_url: videoUrl,
