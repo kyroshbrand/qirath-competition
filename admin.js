@@ -592,30 +592,18 @@ async function generatePosterBlob(details, photoImgElement) {
   const pConfig = masterData.config || { cx: 50, cy: 44.5, radius: 20 };
 
   if (masterImg && masterImg.complete && masterImg.naturalWidth > 0) {
-    // 1. Draw Master Template Poster
-    canvas.width = masterImg.naturalWidth;
-    canvas.height = masterImg.naturalHeight;
+    // 1. Draw Master Template Poster at Instagram post size / master resolution
+    canvas.width = masterImg.naturalWidth || 1080;
+    canvas.height = masterImg.naturalHeight || 1350;
     ctx.drawImage(masterImg, 0, 0, canvas.width, canvas.height);
 
-    // 2. Middle round circle coordinates
-    const cx = canvas.width * (pConfig.cx / 100);
-    const cy = canvas.height * (pConfig.cy / 100);
-    const radius = canvas.width * (pConfig.radius / 100);
+    // 2. Middle round circle coordinates (auto attached)
+    const cx = canvas.width * ((pConfig.cx || 50) / 100);
+    const cy = canvas.height * ((pConfig.cy || 44.5) / 100);
+    const radius = canvas.width * ((pConfig.radius || 20) / 100);
 
-    // Circular Face Photo Frame
+    // Circular Face Photo Frame (NO STROKE, NO BORDER - PURE CLEAN CLIP)
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + (canvas.width * 0.012), 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(212, 167, 59, 0.45)";
-    ctx.lineWidth = Math.max(3, canvas.width * 0.007);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + (canvas.width * 0.004), 0, Math.PI * 2);
-    ctx.strokeStyle = "#d4a73b";
-    ctx.lineWidth = Math.max(4, canvas.width * 0.009);
-    ctx.stroke();
-
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.clip();
@@ -635,115 +623,21 @@ async function generatePosterBlob(details, photoImgElement) {
     }
     ctx.restore();
 
-    // 3. Name & Registration Overlay
-    const textStartY = cy + radius + (canvas.height * 0.038);
-    ctx.textAlign = "center";
-
-    // Candidate Name
-    const nameFontSize = Math.round(canvas.width * 0.046);
-    ctx.font = `700 ${nameFontSize}px 'Playfair Display', serif`;
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "rgba(0,0,0,0.95)";
-    ctx.shadowBlur = 14;
-    ctx.fillText(details.full_name || 'Participant', cx, textStartY);
-    ctx.shadowBlur = 0;
-
-    // Registration ID badge
-    const badgeW = Math.round(canvas.width * 0.38);
-    const badgeH = Math.round(canvas.height * 0.028);
-    const badgeX = cx - (badgeW / 2);
-    const badgeY = textStartY + (canvas.height * 0.016);
-
-    ctx.fillStyle = "rgba(8, 18, 12, 0.88)";
-    ctx.strokeStyle = "#d4a73b";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#fae8b2";
-    const idFontSize = Math.round(badgeH * 0.62);
-    ctx.font = `700 ${idFontSize}px monospace`;
-    ctx.fillText(details.registration_id, cx, badgeY + (badgeH * 0.72));
-
-    // Branch & Category Subtitle
-    const metaFontSize = Math.round(canvas.width * 0.024);
-    ctx.font = `600 ${metaFontSize}px 'Plus Jakarta Sans', sans-serif`;
-    ctx.fillStyle = "#e0ded7";
-    ctx.shadowColor = "rgba(0,0,0,0.85)";
-    ctx.shadowBlur = 8;
-    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, cx, badgeY + badgeH + (canvas.height * 0.032));
-    if (details.surah_recited) {
-      ctx.fillStyle = "#fae8b2";
-      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, cx, badgeY + badgeH + (canvas.height * 0.058));
-    }
-    ctx.shadowBlur = 0;
-
+    // Pure poster graphic: No text overlay drawn because master template has official typography
   } else {
-    // Default Royal Poster Generator Fallback
-    canvas.width = 900;
-    canvas.height = 1200;
+    // Default Royal Poster Generator Fallback (Instagram Portrait Post: 1080 x 1350)
+    canvas.width = 1080;
+    canvas.height = 1350;
 
-    const grad = ctx.createRadialGradient(450, 360, 40, 450, 600, 750);
+    const grad = ctx.createRadialGradient(540, 675, 40, 540, 675, 750);
     grad.addColorStop(0, '#0d3822');
     grad.addColorStop(0.5, '#061a10');
     grad.addColorStop(1, '#020603');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 900, 1200);
+    ctx.fillRect(0, 0, 1080, 1350);
 
-    ctx.strokeStyle = '#d4a73b';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(30, 30, 840, 1140);
-    ctx.strokeStyle = 'rgba(212, 167, 59, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(40, 40, 820, 1120);
-
-    try {
-      const logoImg = await getPosterLogo();
-      ctx.drawImage(logoImg, 380, 60, 140, 115);
-    } catch(e) {}
-
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#fae8b2";
-    ctx.font = "600 14px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText("REID & PREMIUM GROOM STUDIO PRESENTS", 450, 205);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "800 32px 'Playfair Display', serif";
-    ctx.fillText("ALL KARNATAKA QIRATH", 450, 248);
-
-    const titleGrad = ctx.createLinearGradient(200, 0, 700, 0);
-    titleGrad.addColorStop(0, "#fae8b2");
-    titleGrad.addColorStop(0.5, "#d4a73b");
-    titleGrad.addColorStop(1, "#9e751d");
-    ctx.fillStyle = titleGrad;
-    ctx.fillText("COMPETITION 2026", 450, 290);
-
-    const ribW = 480, ribH = 38, ribX = 450 - ribW/2, ribY = 315;
-    ctx.fillStyle = titleGrad;
-    ctx.beginPath();
-    ctx.roundRect(ribX, ribY, ribW, ribH, 19);
-    ctx.fill();
-
-    ctx.fillStyle = "#050b07";
-    ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText("★ CONGRATULATIONS! YOU ARE SELECTED ★", 450, 340);
-
-    const cx = 450, cy = 525, radius = 135;
+    const cx = 540, cy = 600, radius = 220;
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(212, 167, 59, 0.4)";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = "#d4a73b";
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.clip();
@@ -755,38 +649,8 @@ async function generatePosterBlob(details, photoImgElement) {
       const size = Math.min(pw, ph);
       const sx = (pw - size) / 2, sy = (ph - size) / 2;
       ctx.drawImage(photoImgElement, sx, sy, size, size, cx - radius, cy - radius, radius * 2, radius * 2);
-    } else {
-      ctx.fillStyle = "#d4a73b";
-      ctx.font = "800 70px 'Playfair Display', serif";
-      ctx.fillText("RP", cx, cy + 25);
     }
     ctx.restore();
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "700 34px 'Playfair Display', serif";
-    ctx.fillText(details.full_name || 'Candidate', 450, 715);
-
-    const idW = 300, idH = 38, idX = 450 - idW/2, idY = 740;
-    ctx.fillStyle = "rgba(212, 167, 59, 0.12)";
-    ctx.strokeStyle = "#d4a73b";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(idX, idY, idW, idH, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#fae8b2";
-    ctx.font = "700 18px monospace";
-    ctx.fillText(details.registration_id, 450, 765);
-
-    ctx.fillStyle = "#d8d3c5";
-    ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText(`Category: Age 08 - 18 Years  •  Reid & Premium ${details.branch} Branch`, 450, 815);
-    if (details.surah_recited) {
-      ctx.fillStyle = "#fae8b2";
-      ctx.font = "500 15px 'Plus Jakarta Sans', sans-serif";
-      ctx.fillText(`📖 Reciting: ${details.surah_recited}`, 450, 845);
-    }
   }
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -890,8 +754,10 @@ async function initMasterPosterStudio() {
   const resetBtn = document.getElementById('btnResetMasterPoster');
   const saveBtn = document.getElementById('btnSaveMasterPosterConfig');
   const sliderY = document.getElementById('sliderCircleY');
+  const sliderX = document.getElementById('sliderCircleX');
   const sliderRadius = document.getElementById('sliderCircleRadius');
   const labelY = document.getElementById('labelCircleY');
+  const labelX = document.getElementById('labelCircleX');
   const labelRadius = document.getElementById('labelCircleRadius');
 
   if (openBtn && modal) {
@@ -901,8 +767,10 @@ async function initMasterPosterStudio() {
       currentMasterPosterUrl = data.url;
       currentMasterPosterConfig = data.config || { cx: 50, cy: 44.5, radius: 20 };
       if (sliderY) sliderY.value = currentMasterPosterConfig.cy;
+      if (sliderX) sliderX.value = currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50;
       if (sliderRadius) sliderRadius.value = currentMasterPosterConfig.radius;
       if (labelY) labelY.textContent = currentMasterPosterConfig.cy + '%';
+      if (labelX) labelX.textContent = (currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50) + '%';
       if (labelRadius) labelRadius.textContent = currentMasterPosterConfig.radius + '%';
       updateMasterPosterStatusLabel();
       await renderMasterPosterPreview();
@@ -956,6 +824,14 @@ async function initMasterPosterStudio() {
     });
   }
 
+  if (sliderX) {
+    sliderX.addEventListener('input', () => {
+      currentMasterPosterConfig.cx = parseFloat(sliderX.value);
+      if (labelX) labelX.textContent = sliderX.value + '%';
+      renderMasterPosterPreview();
+    });
+  }
+
   if (sliderRadius) {
     sliderRadius.addEventListener('input', () => {
       currentMasterPosterConfig.radius = parseFloat(sliderRadius.value);
@@ -986,8 +862,10 @@ async function initMasterPosterStudio() {
         currentMasterPosterUrl = 'assets/master_poster_default.jpg';
         currentMasterPosterConfig = { cx: 50, cy: 44.5, radius: 20 };
         if (sliderY) sliderY.value = 44.5;
+        if (sliderX) sliderX.value = 50;
         if (sliderRadius) sliderRadius.value = 20;
         if (labelY) labelY.textContent = '44.5%';
+        if (labelX) labelX.textContent = '50%';
         if (labelRadius) labelRadius.textContent = '20%';
         await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
         updateMasterPosterStatusLabel();
@@ -1020,42 +898,27 @@ async function renderMasterPosterPreview() {
   } catch(e) {}
 
   if (!posterImg || !posterImg.complete || posterImg.naturalWidth === 0) {
-    canvas.width = 900;
-    canvas.height = 1200;
+    canvas.width = 1080;
+    canvas.height = 1350;
     ctx.fillStyle = '#0a1710';
-    ctx.fillRect(0, 0, 900, 1200);
+    ctx.fillRect(0, 0, 1080, 1350);
     ctx.fillStyle = '#fae8b2';
-    ctx.font = '24px sans-serif';
+    ctx.font = '28px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Poster Preview Loading…', 450, 600);
+    ctx.fillText('Poster Preview Loading…', 540, 675);
     return;
   }
 
-  canvas.width = posterImg.naturalWidth;
-  canvas.height = posterImg.naturalHeight;
+  canvas.width = posterImg.naturalWidth || 1080;
+  canvas.height = posterImg.naturalHeight || 1350;
   ctx.drawImage(posterImg, 0, 0, canvas.width, canvas.height);
 
-  const cx = canvas.width * (currentMasterPosterConfig.cx / 100);
-  const cy = canvas.height * (currentMasterPosterConfig.cy / 100);
-  const radius = canvas.width * (currentMasterPosterConfig.radius / 100);
+  const cx = canvas.width * ((currentMasterPosterConfig.cx !== undefined ? currentMasterPosterConfig.cx : 50) / 100);
+  const cy = canvas.height * ((currentMasterPosterConfig.cy !== undefined ? currentMasterPosterConfig.cy : 44.5) / 100);
+  const radius = canvas.width * ((currentMasterPosterConfig.radius !== undefined ? currentMasterPosterConfig.radius : 20) / 100);
 
-  // Draw Sample Face inside the middle circular frame
+  // Draw Sample Face inside the middle circular frame (NO STROKE, NO BORDER - PURE CLEAN CLIP)
   ctx.save();
-  // Glowing gold outer ring
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + (canvas.width * 0.012), 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(212, 167, 59, 0.45)";
-  ctx.lineWidth = Math.max(3, canvas.width * 0.007);
-  ctx.stroke();
-
-  // Solid golden border ring
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + (canvas.width * 0.004), 0, Math.PI * 2);
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = Math.max(4, canvas.width * 0.009);
-  ctx.stroke();
-
-  // Circular clip
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
@@ -1076,43 +939,7 @@ async function renderMasterPosterPreview() {
   }
   ctx.restore();
 
-  // Draw sample candidate text overlay
-  const textStartY = cy + radius + (canvas.height * 0.038);
-  ctx.textAlign = "center";
-
-  const nameFontSize = Math.round(canvas.width * 0.046);
-  ctx.font = `700 ${nameFontSize}px 'Playfair Display', serif`;
-  ctx.fillStyle = "#ffffff";
-  ctx.shadowColor = "rgba(0,0,0,0.95)";
-  ctx.shadowBlur = 14;
-  ctx.fillText("Sample Candidate Name", cx, textStartY);
-  ctx.shadowBlur = 0;
-
-  const badgeW = Math.round(canvas.width * 0.38);
-  const badgeH = Math.round(canvas.height * 0.028);
-  const badgeX = cx - (badgeW / 2);
-  const badgeY = textStartY + (canvas.height * 0.016);
-
-  ctx.fillStyle = "rgba(8, 18, 12, 0.88)";
-  ctx.strokeStyle = "#d4a73b";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "#fae8b2";
-  const idFontSize = Math.round(badgeH * 0.62);
-  ctx.font = `700 ${idFontSize}px monospace`;
-  ctx.fillText("AKQC-2026-SAMPLE", cx, badgeY + (badgeH * 0.72));
-
-  const metaFontSize = Math.round(canvas.width * 0.024);
-  ctx.font = `600 ${metaFontSize}px 'Plus Jakarta Sans', sans-serif`;
-  ctx.fillStyle = "#e0ded7";
-  ctx.shadowColor = "rgba(0,0,0,0.85)";
-  ctx.shadowBlur = 8;
-  ctx.fillText("Category: Age 08 - 18 Years  •  Reid & Premium Branch", cx, badgeY + badgeH + (canvas.height * 0.032));
-  ctx.shadowBlur = 0;
+  // No text overlay drawn on poster: official typography is preserved entirely from master poster graphic
 }
 
 // ====================================================================
