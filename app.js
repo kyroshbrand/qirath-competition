@@ -458,7 +458,7 @@ function initAdminAuthModal() {
         sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
         window.location.href = 'admin.html';
       } else {
-        if (errorMsg) errorMsg.textContent = "Incorrect PIN code. Password is: RP26";
+        if (errorMsg) errorMsg.textContent = "Incorrect PIN code. Access denied.";
       }
     });
     pinInput.addEventListener('keydown', (e) => {

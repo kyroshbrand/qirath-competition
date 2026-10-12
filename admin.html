@@ -19,105 +19,215 @@
 </head>
 <body class="admin-shell">
 
+  <!-- Secure Organizer PIN Lockscreen Modal (Password Strictly Hidden) -->
+  <div id="adminAuthLockscreen" class="admin-lockscreen-overlay" style="display:none;">
+    <div class="admin-lockscreen-card">
+      <div style="text-align:center; margin-bottom:18px;">
+        <img src="assets/logo.png" alt="Reid &amp; Premium" style="width:64px; height:64px; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(212,167,59,0.3));">
+        <h2 style="font-family:var(--font-serif); font-size:19px; color:var(--gold-100); text-transform:uppercase; margin-top:10px; letter-spacing:0.06em;">
+          Organizer Admin Access
+        </h2>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+          All Karnataka Qirath Competition • Reid &amp; Premium Groom Studio
+        </p>
+      </div>
+
+      <form id="adminLockscreenForm" onsubmit="return false;" style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label for="adminAuthPinInput" style="display:block; font-size:11.5px; font-weight:700; color:var(--gold-200); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">
+            Enter Organizer Security PIN
+          </label>
+          <div style="position:relative;">
+            <input type="password" id="adminAuthPinInput" class="form-control" placeholder="••••••••" maxlength="24" autocomplete="current-password" autofocus style="padding-right:42px; font-size:16px; letter-spacing:0.18em; text-align:center;">
+            <button type="button" id="btnTogglePinVisibility" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; padding:4px;" title="Show/Hide PIN">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <div id="adminAuthError" style="display:none; color:#f87171; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); padding:8px 12px; border-radius:6px; font-size:12px; text-align:center;">
+        </div>
+
+        <button type="submit" id="btnAdminUnlockSubmit" class="btn-submit-entry" style="padding:13px; font-size:13.5px; width:100%;">
+          🔒 Unlock Admin Dashboard
+        </button>
+
+        <div style="text-align:center; margin-top:4px;">
+          <a href="index.html" style="color:var(--text-muted); font-size:12px; text-decoration:none;">
+            &larr; Back to Public Registration Form
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Admin Header Navigation -->
   <nav class="admin-nav">
-    <div style="display:flex; align-items:center; gap:14px;">
-      <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
-        <img src="assets/logo.png" alt="Reid &amp; Premium" style="width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));">
-        <div>
-          <h1 style="font-family:var(--font-serif); font-size:17px; color:var(--gold-100); line-height:1.2; text-transform:uppercase;">
-            Qirath Admin Portal
-          </h1>
-          <span style="font-size:11px; color:var(--text-muted); letter-spacing:0.12em; text-transform:uppercase;">
-            Reid &amp; Premium Groom Studio
-          </span>
-        </div>
-      </a>
-      <span id="backendStatusBadge" class="status-pill pending" style="margin-left:10px; cursor:pointer;" title="Click Supabase Settings to configure">
-        🟡 Checking Connection…
-      </span>
-    </div>
+    <div class="admin-nav-container">
+      <div class="admin-nav-brand">
+        <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+          <img src="assets/logo.png" alt="Reid &amp; Premium" style="width:42px; height:42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5)); flex-shrink:0;">
+          <div>
+            <h1 style="font-family:var(--font-serif); font-size:16px; color:var(--gold-100); line-height:1.2; text-transform:uppercase;">
+              Qirath Admin
+            </h1>
+            <span style="font-size:10.5px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase;">
+              Reid &amp; Premium
+            </span>
+          </div>
+        </a>
+        <span id="backendStatusBadge" class="status-pill pending" style="cursor:pointer; font-size:10.5px;" title="Click Supabase Settings to configure">
+          🟡 Checking Connection…
+        </span>
+      </div>
 
-    <div style="display:flex; align-items:center; gap:12px;">
-      <button type="button" class="btn-nav-action btn-nav-outline" id="btnOpenSupabaseSettings" style="font-size:12px; padding:7px 14px;">
-        ⚙️ Supabase Settings
-      </button>
-      <button type="button" class="btn-nav-action btn-nav-gold" id="btnExportCsv" style="font-size:12px; padding:7px 14px;">
-        📥 Export CSV
-      </button>
-      <a href="index.html" class="btn-nav-action btn-nav-outline" style="font-size:12px; padding:7px 14px;">
-        🌐 View Public Form
-      </a>
-      <button type="button" class="btn-nav-action" style="font-size:12px; padding:7px 12px; background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3);" onclick="sessionStorage.removeItem('AKQC_ADMIN_LOGGED_IN'); window.location.href='index.html';">
-        Logout
-      </button>
+      <div class="admin-nav-actions">
+        <button type="button" class="btn-nav-action btn-nav-gold" id="btnOpenMasterPosterModal" title="Configure Master Template Poster">
+          👑 Master Poster
+        </button>
+        <button type="button" class="btn-nav-action btn-nav-outline" id="btnExportCsv" title="Export all candidate entries to CSV file">
+          📥 Export CSV
+        </button>
+        <button type="button" class="btn-nav-action btn-nav-outline" id="btnOpenSupabaseSettings" title="Connect Live Supabase Database & Storage">
+          ⚙️ Settings
+        </button>
+        <a href="index.html" class="btn-nav-action btn-nav-outline" title="Open Public Candidate Registration Form">
+          🌐 Public Form
+        </a>
+        <button type="button" class="btn-nav-action" style="background:rgba(239, 68, 68, 0.15); color:#f87171; border:1px solid rgba(239, 68, 68, 0.3);" onclick="sessionStorage.removeItem('AKQC_ADMIN_LOGGED_IN'); window.location.reload();">
+          🚪 Logout
+        </button>
+      </div>
     </div>
   </nav>
 
   <!-- Main Content Area -->
-  <main class="container" style="max-width:1180px; padding:30px 20px;">
+  <main class="container" style="max-width:1180px; padding:24px 16px;">
     
-    <!-- Page Title & Quick Refresh -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <!-- Page Title & Quick Actions -->
+    <div class="admin-page-header">
       <div>
-        <h2 style="font-family:var(--font-serif); font-size:26px; color:#fff; text-transform:uppercase; letter-spacing:0.04em;">
-          Participant Entries &amp; Assessment
+        <h2 style="font-family:var(--font-serif); font-size:22px; color:#fff; text-transform:uppercase; letter-spacing:0.04em; margin:0;">
+          Candidate Entries &amp; Assessment
         </h2>
-        <p style="color:var(--text-muted); font-size:13.5px; margin-top:4px;">
-          Review recitation videos, check Aadhaar residency, inspect follow proofs, grade entries, and notify reciters.
+        <p style="color:var(--text-muted); font-size:13px; margin-top:4px;">
+          Review recitation videos, evaluate scores, manage official HD posters, and filter by outlet.
         </p>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button type="button" class="btn-nav-action btn-nav-gold" id="btnOpenMasterPosterModal">
-          👑 Master Poster Template
+      <div class="admin-header-actions">
+        <button type="button" class="btn-nav-action btn-nav-gold" id="btnOpenMasterPosterModalHeader">
+          👑 Master Poster Studio
         </button>
         <button type="button" class="btn-nav-action btn-nav-outline" id="btnRefreshData">
-          🔄 Refresh
+          🔄 Refresh Entries
         </button>
       </div>
     </div>
 
-    <!-- Metrics Cards Row -->
+    <!-- Overall Metrics Cards Row -->
     <div class="admin-metrics-row">
       <div class="admin-metric-card gold-border">
-        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:var(--gold-primary); font-weight:700;">Total Registrations</span>
+        <span style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--gold-primary); font-weight:700;">Total Entries</span>
         <div class="count" id="statTotalCount">0</div>
-        <small style="color:var(--text-muted); font-size:11.5px;">All branches combined</small>
+        <small style="color:var(--text-muted); font-size:11px;">All outlets combined</small>
       </div>
       <div class="admin-metric-card">
-        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:#facc15; font-weight:700;">Pending Review</span>
+        <span style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:#facc15; font-weight:700;">Pending Review</span>
         <div class="count" id="statPendingCount" style="color:#facc15;">0</div>
-        <small style="color:var(--text-muted); font-size:11.5px;">Awaiting video evaluation</small>
+        <small style="color:var(--text-muted); font-size:11px;">Awaiting video grade</small>
       </div>
       <div class="admin-metric-card">
-        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:#4ade80; font-weight:700;">Approved Entries</span>
+        <span style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:#4ade80; font-weight:700;">Approved Entries</span>
         <div class="count" id="statApprovedCount" style="color:#4ade80;">0</div>
-        <small style="color:var(--text-muted); font-size:11.5px;">Verified &amp; qualified</small>
+        <small style="color:var(--text-muted); font-size:11px;">Verified &amp; qualified</small>
       </div>
       <div class="admin-metric-card">
-        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:var(--gold-200); font-weight:700;">Finale Shortlist</span>
+        <span style="font-size:10.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--gold-200); font-weight:700;">Finale Shortlist</span>
         <div class="count" id="statShortlistCount" style="color:var(--gold-200);">0</div>
-        <small style="color:var(--text-muted); font-size:11.5px;">Selected for stage rounds</small>
+        <small style="color:var(--text-muted); font-size:11px;">Selected for finale</small>
       </div>
     </div>
 
-    <!-- Branch Distribution Strip -->
-    <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:14px 20px; margin-bottom:28px; display:flex; flex-wrap:wrap; justify-content:space-around; gap:16px;">
-      <div style="text-align:center;">
-        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Puttur Branch</span>
-        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Puttur">0</div>
+    <!-- 4 Outlets Entry Cards Section (Click any outlet to filter) -->
+    <div class="admin-outlets-section">
+      <div class="outlets-section-header">
+        <div>
+          <h3 class="outlets-title">🏢 Reid &amp; Premium Outlets (4 Branches)</h3>
+          <p class="outlets-subtitle">Tap any outlet card below to filter its entries:</p>
+        </div>
+        <button type="button" id="btnFilterAllBranches" class="btn-outlet-pill active" title="View all entries from all outlets">
+          ✨ All Outlets (Show All)
+        </button>
       </div>
-      <div style="text-align:center;">
-        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Thokkotu Branch</span>
-        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Thokkotu">0</div>
-      </div>
-      <div style="text-align:center;">
-        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 B.C Road Branch</span>
-        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_BCRoad">0</div>
-      </div>
-      <div style="text-align:center;">
-        <span style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase;">📍 Sullia Branch</span>
-        <div style="font-size:18px; font-weight:800; color:var(--gold-100);" id="statBranch_Sullia">0</div>
+
+      <div class="admin-outlets-grid">
+        <!-- 1. Puttur Outlet Card -->
+        <div class="admin-outlet-card" id="cardOutlet_Puttur" data-branch="Puttur" title="Click to view Puttur Outlet entries">
+          <div class="outlet-card-top">
+            <span class="outlet-pin">📍</span>
+            <span class="outlet-name">PUTTUR</span>
+            <span class="outlet-active-tag">Filtered ✓</span>
+          </div>
+          <div class="outlet-card-count">
+            <span id="statBranch_Puttur">0</span>
+            <span class="outlet-card-count-unit">Entries</span>
+          </div>
+          <div class="outlet-card-sub" id="statBranch_Puttur_sub">0 Approved • 0 Pending</div>
+          <div class="outlet-card-footer">
+            <span class="outlet-click-hint">Tap to filter &rarr;</span>
+          </div>
+        </div>
+
+        <!-- 2. Thokkotu Outlet Card -->
+        <div class="admin-outlet-card" id="cardOutlet_Thokkotu" data-branch="Thokkotu" title="Click to view Thokkotu Outlet entries">
+          <div class="outlet-card-top">
+            <span class="outlet-pin">📍</span>
+            <span class="outlet-name">THOKKOTU</span>
+            <span class="outlet-active-tag">Filtered ✓</span>
+          </div>
+          <div class="outlet-card-count">
+            <span id="statBranch_Thokkotu">0</span>
+            <span class="outlet-card-count-unit">Entries</span>
+          </div>
+          <div class="outlet-card-sub" id="statBranch_Thokkotu_sub">0 Approved • 0 Pending</div>
+          <div class="outlet-card-footer">
+            <span class="outlet-click-hint">Tap to filter &rarr;</span>
+          </div>
+        </div>
+
+        <!-- 3. B.C Road Outlet Card -->
+        <div class="admin-outlet-card" id="cardOutlet_BCRoad" data-branch="B.C Road" title="Click to view B.C Road Outlet entries">
+          <div class="outlet-card-top">
+            <span class="outlet-pin">📍</span>
+            <span class="outlet-name">B.C ROAD</span>
+            <span class="outlet-active-tag">Filtered ✓</span>
+          </div>
+          <div class="outlet-card-count">
+            <span id="statBranch_BCRoad">0</span>
+            <span class="outlet-card-count-unit">Entries</span>
+          </div>
+          <div class="outlet-card-sub" id="statBranch_BCRoad_sub">0 Approved • 0 Pending</div>
+          <div class="outlet-card-footer">
+            <span class="outlet-click-hint">Tap to filter &rarr;</span>
+          </div>
+        </div>
+
+        <!-- 4. Sullia Outlet Card -->
+        <div class="admin-outlet-card" id="cardOutlet_Sullia" data-branch="Sullia" title="Click to view Sullia Outlet entries">
+          <div class="outlet-card-top">
+            <span class="outlet-pin">📍</span>
+            <span class="outlet-name">SULLIA</span>
+            <span class="outlet-active-tag">Filtered ✓</span>
+          </div>
+          <div class="outlet-card-count">
+            <span id="statBranch_Sullia">0</span>
+            <span class="outlet-card-count-unit">Entries</span>
+          </div>
+          <div class="outlet-card-sub" id="statBranch_Sullia_sub">0 Approved • 0 Pending</div>
+          <div class="outlet-card-footer">
+            <span class="outlet-click-hint">Tap to filter &rarr;</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -132,11 +242,11 @@
 
       <div class="filter-group">
         <select id="filterBranch" class="filter-select">
-          <option value="All">All Branches</option>
-          <option value="Puttur">Puttur</option>
-          <option value="Thokkotu">Thokkotu</option>
-          <option value="B.C Road">B.C Road</option>
-          <option value="Sullia">Sullia</option>
+          <option value="All">All Outlets (4 Branches)</option>
+          <option value="Puttur">📍 Puttur Outlet</option>
+          <option value="Thokkotu">📍 Thokkotu Outlet</option>
+          <option value="B.C Road">📍 B.C Road Outlet</option>
+          <option value="Sullia">📍 Sullia Outlet</option>
         </select>
 
         <select id="filterStatus" class="filter-select">
@@ -154,8 +264,26 @@
       </div>
     </div>
 
-    <!-- Participants Table -->
-    <div class="data-table-wrap">
+    <!-- View Switcher & Counter Bar -->
+    <div class="view-switch-bar">
+      <div class="view-switch-count" id="entriesSummaryCount">Showing entries…</div>
+      <div class="view-toggle-group">
+        <button type="button" id="btnViewCards" class="btn-view-toggle active" title="Switch to Touch-Friendly Cards View (Ideal for Mobile)">
+          📱 Cards View
+        </button>
+        <button type="button" id="btnViewTable" class="btn-view-toggle" title="Switch to Full Spreadsheet Table View">
+          💻 Table View
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile & Responsive Cards View Container -->
+    <div id="participantsCardsView" class="participants-cards-grid">
+      <!-- Rendered by admin.js -->
+    </div>
+
+    <!-- Desktop Data Table View Container -->
+    <div class="data-table-wrap" id="participantsTableWrap" style="display:none;">
       <table class="data-table">
         <thead>
           <tr>
@@ -175,8 +303,8 @@
     </div>
 
     <!-- Pagination Controls (Optimized for 1,000+ Participants) -->
-    <div id="paginationBar" style="display:flex; justify-content:space-between; align-items:center; padding:16px 8px; margin-top:8px; color:var(--text-muted); font-size:13px; flex-wrap:wrap; gap:12px;">
-      <div id="paginationInfo">Showing 1 to 50 of 0 entries</div>
+    <div id="paginationBar" style="display:flex; justify-content:space-between; align-items:center; padding:14px 6px; margin-top:8px; color:var(--text-muted); font-size:13px; flex-wrap:wrap; gap:12px;">
+      <div id="paginationInfo">Showing 1 to 50 entries</div>
       <div style="display:flex; gap:8px; align-items:center;">
         <button type="button" class="btn-nav-action btn-nav-outline" id="btnPrevPage" style="padding:6px 14px; font-size:12px;">&laquo; Previous</button>
         <span id="paginationCurrentPage" style="color:#fff; font-weight:700; padding:0 8px;">Page 1</span>
@@ -188,7 +316,7 @@
     <div id="emptyStateNotice" style="display:none; text-align:center; padding:50px 20px; background:var(--bg-card); border-radius:var(--radius-md); border:1px solid var(--border-subtle); margin-top:20px;">
       <div style="font-size:36px; margin-bottom:10px;">📋</div>
       <h3 style="color:#fff; font-size:18px;">No participants match this filter</h3>
-      <p style="color:var(--text-muted); font-size:13.5px; margin-top:6px;">Try clearing your search keyword or switching branch filter.</p>
+      <p style="color:var(--text-muted); font-size:13.5px; margin-top:6px;">Try clearing your search keyword or switching outlet filter.</p>
     </div>
 
   </main>
@@ -263,9 +391,9 @@
 
         <div style="margin-bottom:20px;">
           <label class="form-label" for="supabasePinInput">Organizer Admin PIN</label>
-          <input type="password" id="supabasePinInput" class="form-control" placeholder="RP26">
+          <input type="password" id="supabasePinInput" class="form-control" placeholder="Enter new PIN (or leave blank to keep unchanged)">
           <small style="color:var(--text-muted); font-size:11.5px; display:block; margin-top:4px;">
-            The secret PIN required to access this admin management dashboard.
+            The secret security PIN required to access this admin management dashboard.
           </small>
         </div>
 

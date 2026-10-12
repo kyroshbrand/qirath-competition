@@ -87,28 +87,79 @@ function drawRoundedRectPath(ctx, x, y, w, h, radius) {
   ctx.closePath();
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Check session authorization
-  if (sessionStorage.getItem('AKQC_ADMIN_LOGGED_IN') !== 'true') {
-    const pin = prompt("Enter Admin Access PIN (Password: RP26):");
-    const validPin = (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.adminPin) ? SUPABASE_CONFIG.adminPin : "RP26";
-    if (pin === validPin || pin === "RP26") {
-      sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
-    } else {
-      alert("Unauthorized access. Redirecting to home page.");
-      window.location.href = 'index.html';
-      return;
-    }
+document.addEventListener('DOMContentLoaded', () => {
+  initAdminAuthLockscreen();
+});
+
+// Organizer PIN Lockscreen Controller (No Password Displayed)
+function initAdminAuthLockscreen() {
+  const lockscreen = document.getElementById('adminAuthLockscreen');
+  const pinInput = document.getElementById('adminAuthPinInput');
+  const errorEl = document.getElementById('adminAuthError');
+  const form = document.getElementById('adminLockscreenForm');
+  const toggleBtn = document.getElementById('btnTogglePinVisibility');
+
+  if (sessionStorage.getItem('AKQC_ADMIN_LOGGED_IN') === 'true') {
+    if (lockscreen) lockscreen.style.display = 'none';
+    initDashboardModules();
+    return;
   }
 
+  // Show secure lockscreen overlay
+  if (lockscreen) lockscreen.style.display = 'flex';
+  if (pinInput) {
+    pinInput.value = '';
+    setTimeout(() => pinInput.focus(), 150);
+  }
+
+  if (toggleBtn && pinInput) {
+    toggleBtn.onclick = () => {
+      if (pinInput.type === 'password') {
+        pinInput.type = 'text';
+        toggleBtn.textContent = '🙈';
+      } else {
+        pinInput.type = 'password';
+        toggleBtn.textContent = '👁️';
+      }
+    };
+  }
+
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const enteredPin = (pinInput ? pinInput.value : '').trim();
+      const validPin = (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.adminPin) ? SUPABASE_CONFIG.adminPin : "RP26";
+
+      if (enteredPin === validPin || enteredPin === "RP26") {
+        sessionStorage.setItem('AKQC_ADMIN_LOGGED_IN', 'true');
+        if (lockscreen) lockscreen.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        initDashboardModules();
+      } else {
+        if (errorEl) {
+          errorEl.textContent = "Incorrect security PIN. Access denied.";
+          errorEl.style.display = 'block';
+        }
+        if (pinInput) {
+          pinInput.value = '';
+          pinInput.focus();
+        }
+      }
+    };
+  }
+}
+
+async function initDashboardModules() {
   updateBackendIndicator();
   initToolbarFilters();
+  initOutletCardsFilter();
+  initViewToggle();
   initPaginationControls();
   initSupabaseSettingsModal();
   initDeleteHandlers();
   initMasterPosterStudio();
   await loadAndRenderParticipants();
-});
+}
 
 function updateBackendIndicator() {
   const badge = document.getElementById('backendStatusBadge');
@@ -127,8 +178,12 @@ function updateBackendIndicator() {
 
 async function loadAndRenderParticipants() {
   const tableBody = document.getElementById('participantsTableBody');
+  const cardsContainer = document.getElementById('participantsCardsView');
   if (tableBody) {
     tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--gold-200);">Loading participant records…</td></tr>`;
+  }
+  if (cardsContainer) {
+    cardsContainer.innerHTML = `<div style="text-align:center; padding:30px; color:var(--gold-200); grid-column:1/-1;">Loading participant records…</div>`;
   }
 
   try {
@@ -140,6 +195,9 @@ async function loadAndRenderParticipants() {
     console.error('Failed to load participants:', err);
     if (tableBody) {
       tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#ef4444;">Failed to load records: ${err.message}</td></tr>`;
+    }
+    if (cardsContainer) {
+      cardsContainer.innerHTML = `<div style="text-align:center; padding:30px; color:#ef4444; grid-column:1/-1;">Failed to load records: ${err.message}</div>`;
     }
   }
 }
@@ -155,14 +213,121 @@ function renderStatsCounters(list) {
   if (approvedEl) approvedEl.textContent = list.filter(p => p.status === 'Approved').length;
   if (shortlistEl) shortlistEl.textContent = list.filter(p => p.status === 'Shortlisted').length;
 
-  // Branch Counters
+  // 4 Outlets Breakdown (Total, Approved, Pending)
   const branches = ["Puttur", "Thokkotu", "B.C Road", "Sullia"];
   branches.forEach(b => {
-    const el = document.getElementById(`statBranch_${b.replace(/[^a-zA-Z]/g, '')}`);
-    if (el) {
-      el.textContent = list.filter(p => p.branch === b).length;
+    const bKey = b.replace(/[^a-zA-Z]/g, '');
+    const countEl = document.getElementById(`statBranch_${bKey}`);
+    const subEl = document.getElementById(`statBranch_${bKey}_sub`);
+
+    const branchList = list.filter(p => p.branch === b);
+    const approvedCount = branchList.filter(p => p.status === 'Approved' || p.status === 'Shortlisted').length;
+    const pendingCount = branchList.filter(p => p.status === 'Pending Review').length;
+
+    if (countEl) countEl.textContent = branchList.length;
+    if (subEl) subEl.textContent = `${approvedCount} Approved • ${pendingCount} Pending`;
+  });
+}
+
+// 4 Outlets Interactive Cards Filtering
+function initOutletCardsFilter() {
+  const branches = ["Puttur", "Thokkotu", "B.C Road", "Sullia"];
+  const allBtn = document.getElementById('btnFilterAllBranches');
+  const branchSelect = document.getElementById('filterBranch');
+
+  const updateActiveOutletUI = (selectedBranch) => {
+    branches.forEach(b => {
+      const card = document.getElementById(`cardOutlet_${b.replace(/[^a-zA-Z]/g, '')}`);
+      if (card) {
+        if (selectedBranch === b) {
+          card.classList.add('active-outlet-card');
+        } else {
+          card.classList.remove('active-outlet-card');
+        }
+      }
+    });
+
+    if (allBtn) {
+      if (selectedBranch === 'All') {
+        allBtn.classList.add('active');
+      } else {
+        allBtn.classList.remove('active');
+      }
+    }
+
+    if (branchSelect && branchSelect.value !== selectedBranch) {
+      branchSelect.value = selectedBranch;
+    }
+  };
+
+  branches.forEach(b => {
+    const card = document.getElementById(`cardOutlet_${b.replace(/[^a-zA-Z]/g, '')}`);
+    if (card) {
+      card.addEventListener('click', () => {
+        if (currentFilter.branch === b) {
+          // If clicked again, reset to All
+          currentFilter.branch = 'All';
+        } else {
+          currentFilter.branch = b;
+        }
+        updateActiveOutletUI(currentFilter.branch);
+        currentPage = 1;
+        renderTableRows();
+      });
     }
   });
+
+  if (allBtn) {
+    allBtn.addEventListener('click', () => {
+      currentFilter.branch = 'All';
+      updateActiveOutletUI('All');
+      currentPage = 1;
+      renderTableRows();
+    });
+  }
+
+  if (branchSelect) {
+    branchSelect.addEventListener('change', () => {
+      currentFilter.branch = branchSelect.value;
+      updateActiveOutletUI(branchSelect.value);
+      currentPage = 1;
+      renderTableRows();
+    });
+  }
+}
+
+// Switch between Mobile Cards View and Desktop Table View
+function initViewToggle() {
+  const btnCards = document.getElementById('btnViewCards');
+  const btnTable = document.getElementById('btnViewTable');
+  const cardsView = document.getElementById('participantsCardsView');
+  const tableWrap = document.getElementById('participantsTableWrap');
+
+  if (!btnCards || !btnTable || !cardsView || !tableWrap) return;
+
+  const setView = (mode) => {
+    if (mode === 'cards') {
+      btnCards.classList.add('active');
+      btnTable.classList.remove('active');
+      cardsView.style.display = 'grid';
+      tableWrap.style.display = 'none';
+    } else {
+      btnTable.classList.add('active');
+      btnCards.classList.remove('active');
+      cardsView.style.display = 'none';
+      tableWrap.style.display = 'block';
+    }
+  };
+
+  btnCards.addEventListener('click', () => setView('cards'));
+  btnTable.addEventListener('click', () => setView('table'));
+
+  // Default to Mobile Cards view on small screens, Table view on larger screens
+  if (window.innerWidth <= 768) {
+    setView('cards');
+  } else {
+    setView('table');
+  }
 }
 
 function getFilteredParticipants() {
@@ -219,16 +384,19 @@ function initPaginationControls() {
 
 function renderTableRows() {
   const tableBody = document.getElementById('participantsTableBody');
+  const cardsContainer = document.getElementById('participantsCardsView');
   const emptyState = document.getElementById('emptyStateNotice');
   const paginationBar = document.getElementById('paginationBar');
-  if (!tableBody) return;
+  const summaryCountEl = document.getElementById('entriesSummaryCount');
 
   const filtered = getFilteredParticipants();
 
   if (filtered.length === 0) {
-    tableBody.innerHTML = '';
+    if (tableBody) tableBody.innerHTML = '';
+    if (cardsContainer) cardsContainer.innerHTML = '';
     if (emptyState) emptyState.style.display = 'block';
     if (paginationBar) paginationBar.style.display = 'none';
+    if (summaryCountEl) summaryCountEl.textContent = 'Showing 0 entries';
     return;
   }
 
@@ -243,72 +411,157 @@ function renderTableRows() {
   const endIdx = Math.min(startIdx + PAGE_SIZE, filtered.length);
   const pageItems = filtered.slice(startIdx, endIdx);
 
-  // Update pagination indicator
+  // Update pagination indicator & summary counter
   const infoEl = document.getElementById('paginationInfo');
   const pageEl = document.getElementById('paginationCurrentPage');
   const prevBtn = document.getElementById('btnPrevPage');
   const nextBtn = document.getElementById('btnNextPage');
 
-  if (infoEl) infoEl.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${filtered.length} entries`;
+  const countText = `Showing ${startIdx + 1} to ${endIdx} of ${filtered.length} entries`;
+  if (infoEl) infoEl.textContent = countText;
+  if (summaryCountEl) summaryCountEl.textContent = countText;
   if (pageEl) pageEl.textContent = `Page ${currentPage} of ${totalPages}`;
   if (prevBtn) prevBtn.disabled = (currentPage <= 1);
   if (nextBtn) nextBtn.disabled = (currentPage >= totalPages);
 
-  tableBody.innerHTML = pageItems.map(p => {
-    let statusClass = "pending";
-    if (p.status === "Approved") statusClass = "approved";
-    if (p.status === "Shortlisted") statusClass = "shortlisted";
-    if (p.status === "Rejected") statusClass = "rejected";
+  // 1. Render Mobile Cards View (Touch-friendly & organized for small screens)
+  if (cardsContainer) {
+    cardsContainer.innerHTML = pageItems.map(p => {
+      let statusClass = "pending";
+      if (p.status === "Approved") statusClass = "approved";
+      if (p.status === "Shortlisted") statusClass = "shortlisted";
+      if (p.status === "Rejected") statusClass = "rejected";
 
-    return `
-      <tr>
-        <td>
-          <strong style="color:var(--gold-200); font-family:monospace; font-size:13.5px;">${p.registration_id}</strong>
-          <div style="font-size:11.5px; color:var(--text-muted);">${formatDate(p.created_at)}</div>
-        </td>
-        <td>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <img src="${p.photo_url || 'assets/logo.png'}" alt="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1.5px solid var(--gold-primary); background:#0c1710; flex-shrink:0;">
-            <div>
-              <strong style="color:#fff; font-size:14px; display:block;">${escapeHtml(p.full_name)}</strong>
-              <div style="font-size:11.5px; color:var(--text-muted);">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</div>
+      const cleanPhone = (p.phone || '').replace(/\D/g, '');
+      const displayName = typeof formatPosterParticipantName === 'function'
+        ? formatPosterParticipantName(p.full_name)
+        : escapeHtml(p.full_name || 'Participant');
+
+      return `
+        <div class="participant-mobile-card">
+          <div class="pmc-header">
+            <img src="${p.photo_url || 'assets/logo.png'}" alt="" class="pmc-avatar" onclick="openReviewDossier('${p.registration_id}')" style="cursor:pointer;" title="Tap to Inspect Dossier">
+            <div class="pmc-name-col">
+              <div class="pmc-name">${displayName}</div>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px;">
+                <span class="pmc-regid">${p.registration_id}</span>
+                <span class="status-pill ${statusClass}" style="font-size:10px; padding:2px 7px;">${p.status}</span>
+              </div>
+              <div class="pmc-date">${formatDate(p.created_at)}</div>
             </div>
           </div>
-        </td>
-        <td>
-          <span style="font-weight:600; color:var(--gold-100);">📍 ${p.branch}</span>
-          <div style="font-size:11.5px; color:var(--text-muted); max-width:140px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(p.address || '')}</div>
-        </td>
-        <td>
-          <div style="font-weight:600; color:#fff;">${p.phone}</div>
-          <button class="btn-table-action" style="padding:2px 8px; font-size:11px; margin-top:3px; background:#1f854a; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="openWhatsAppChat('${p.phone}', '${escapeHtml(p.full_name)}', '${p.registration_id}', '${p.branch}', '${p.status}')">
-            💬 WhatsApp
-          </button>
-        </td>
-        <td>
-          ${p.video_url ? `
-            <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-weight:600; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
-              🎥 Play Video
+
+          <div class="pmc-meta-row">
+            <span class="pmc-branch-badge">📍 ${p.branch} Outlet</span>
+            <span class="pmc-age-badge">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</span>
+            ${p.judge_score > 0 ? `<span style="margin-left:auto; font-weight:800; color:var(--gold-200); font-size:11.5px;">Score: ${p.judge_score}/100</span>` : ''}
+          </div>
+
+          ${p.address ? `<div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px; line-height:1.4;">🏠 ${escapeHtml(p.address)}</div>` : ''}
+
+          <!-- Quick Touch Contact Row -->
+          <div class="pmc-contact-row">
+            <a href="tel:${cleanPhone}" class="btn-pmc-contact btn-pmc-call">
+              📞 Call Reciter
             </a>
-          ` : `<span style="color:var(--text-muted); font-size:11.5px;">No video</span>`}
-          ${p.surah_recited ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">📖 ${escapeHtml(p.surah_recited)}</div>` : ''}
-          ${p.maqam_style ? `<div style="font-size:11px; color:var(--text-muted);">Style: ${p.maqam_style}</div>` : ''}
-        </td>
-        <td>
-          <span class="status-pill ${statusClass}">${p.status}</span>
-          ${p.judge_score > 0 ? `<div style="font-size:11.5px; color:var(--gold-300); margin-top:3px; font-weight:700;">Score: ${p.judge_score}/100</div>` : ''}
-        </td>
-        <td style="white-space:nowrap;">
-          <button class="btn-nav-action btn-nav-gold" style="padding:5px 11px; font-size:11.5px; margin-right:4px;" onclick="openReviewDossier('${p.registration_id}')" title="Review Dossier, Video, Photo & Poster">
-            🔍 Review
-          </button>
-          <button class="btn-table-action" style="padding:5px 9px; font-size:11px; background:rgba(239, 68, 68, 0.16); border:1px solid rgba(239, 68, 68, 0.45); color:#fca5a5; border-radius:4px; cursor:pointer;" onclick="promptDeleteParticipant('${p.registration_id}')" title="Delete Entry (Asks Confirmation)">
-            🗑️ Delete
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join('');
+            <button type="button" class="btn-pmc-contact btn-pmc-whatsapp" onclick="openWhatsAppChat('${p.phone}', '${escapeHtml(p.full_name)}', '${p.registration_id}', '${p.branch}', '${p.status}')">
+              💬 WhatsApp
+            </button>
+          </div>
+
+          <!-- Recitation Video Box -->
+          ${p.video_url ? `
+            <div class="pmc-video-box">
+              <span style="color:var(--gold-200); font-weight:600;">🎥 Recitation Video:</span>
+              <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-primary); text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                ▶ Play Video &rarr;
+              </a>
+            </div>
+          ` : `
+            <div class="pmc-video-box" style="color:var(--text-muted);">
+              <span>🎥 Video: None uploaded</span>
+            </div>
+          `}
+
+          <!-- Quick Action Buttons Grid -->
+          <div class="pmc-actions-grid">
+            <button type="button" class="btn-pmc-action gold" onclick="openReviewDossier('${p.registration_id}')" title="Full Dossier, Documents & Score Grading">
+              🔍 Dossier
+            </button>
+            <button type="button" class="btn-pmc-action" onclick="adminDownloadPoster('${p.registration_id}')" title="Download Official HD Poster">
+              📜 Poster
+            </button>
+            <button type="button" class="btn-pmc-action danger" onclick="promptDeleteParticipant('${p.registration_id}')" title="Delete Entry Safely">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. Render Desktop Table View (Full spreadsheet layout)
+  if (tableBody) {
+    tableBody.innerHTML = pageItems.map(p => {
+      let statusClass = "pending";
+      if (p.status === "Approved") statusClass = "approved";
+      if (p.status === "Shortlisted") statusClass = "shortlisted";
+      if (p.status === "Rejected") statusClass = "rejected";
+
+      const displayName = typeof formatPosterParticipantName === 'function'
+        ? formatPosterParticipantName(p.full_name)
+        : escapeHtml(p.full_name || 'Participant');
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:var(--gold-200); font-family:monospace; font-size:13.5px;">${p.registration_id}</strong>
+            <div style="font-size:11.5px; color:var(--text-muted);">${formatDate(p.created_at)}</div>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${p.photo_url || 'assets/logo.png'}" alt="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1.5px solid var(--gold-primary); background:#0c1710; flex-shrink:0;">
+              <div>
+                <strong style="color:#fff; font-size:14px; display:block;">${displayName}</strong>
+                <div style="font-size:11.5px; color:var(--text-muted);">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span style="font-weight:600; color:var(--gold-100);">📍 ${p.branch}</span>
+            <div style="font-size:11.5px; color:var(--text-muted); max-width:140px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeHtml(p.address || '')}</div>
+          </td>
+          <td>
+            <div style="font-weight:600; color:#fff;">${p.phone}</div>
+            <button class="btn-table-action" style="padding:2px 8px; font-size:11px; margin-top:3px; background:#1f854a; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="openWhatsAppChat('${p.phone}', '${escapeHtml(p.full_name)}', '${p.registration_id}', '${p.branch}', '${p.status}')">
+              💬 WhatsApp
+            </button>
+          </td>
+          <td>
+            ${p.video_url ? `
+              <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-weight:600; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                🎥 Play Video
+              </a>
+            ` : `<span style="color:var(--text-muted); font-size:11.5px;">No video</span>`}
+            ${p.surah_recited ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">📖 ${escapeHtml(p.surah_recited)}</div>` : ''}
+            ${p.maqam_style ? `<div style="font-size:11px; color:var(--text-muted);">Style: ${p.maqam_style}</div>` : ''}
+          </td>
+          <td>
+            <span class="status-pill ${statusClass}">${p.status}</span>
+            ${p.judge_score > 0 ? `<div style="font-size:11.5px; color:var(--gold-300); margin-top:3px; font-weight:700;">Score: ${p.judge_score}/100</div>` : ''}
+          </td>
+          <td style="white-space:nowrap;">
+            <button class="btn-nav-action btn-nav-gold" style="padding:5px 11px; font-size:11.5px; margin-right:4px;" onclick="openReviewDossier('${p.registration_id}')" title="Review Dossier, Video, Photo & Poster">
+              🔍 Review
+            </button>
+            <button class="btn-table-action" style="padding:5px 9px; font-size:11px; background:rgba(239, 68, 68, 0.16); border:1px solid rgba(239, 68, 68, 0.45); color:#fca5a5; border-radius:4px; cursor:pointer;" onclick="promptDeleteParticipant('${p.registration_id}')" title="Delete Entry (Asks Confirmation)">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 }
 
 function formatDate(isoStr) {
@@ -1000,16 +1253,22 @@ async function initMasterPosterStudio() {
     if (labelNameColor) labelNameColor.textContent = (cfg.name_color || '#ffffff').toUpperCase();
   }
 
+  const openBtnHeader = document.getElementById('btnOpenMasterPosterModalHeader');
+  const handleOpenMasterPoster = async () => {
+    modal.classList.add('open');
+    const data = await getMasterPosterFromBackend();
+    currentMasterPosterUrl = data.url;
+    currentMasterPosterConfig = normalizePosterConfig(data.config);
+    syncStudioUI();
+    updateMasterPosterStatusLabel();
+    await renderMasterPosterPreview();
+  };
+
   if (openBtn && modal) {
-    openBtn.addEventListener('click', async () => {
-      modal.classList.add('open');
-      const data = await getMasterPosterFromBackend();
-      currentMasterPosterUrl = data.url;
-      currentMasterPosterConfig = normalizePosterConfig(data.config);
-      syncStudioUI();
-      updateMasterPosterStatusLabel();
-      await renderMasterPosterPreview();
-    });
+    openBtn.addEventListener('click', handleOpenMasterPoster);
+  }
+  if (openBtnHeader && modal) {
+    openBtnHeader.addEventListener('click', handleOpenMasterPoster);
   }
 
   if (closeBtn && modal) {
@@ -1790,7 +2049,7 @@ function initSupabaseSettingsModal() {
     openBtn.addEventListener('click', () => {
       if (urlInput) urlInput.value = localStorage.getItem('AKQC_SUPABASE_URL') || '';
       if (keyInput) keyInput.value = localStorage.getItem('AKQC_SUPABASE_ANON_KEY') || '';
-      if (pinInput) pinInput.value = localStorage.getItem('AKQC_ADMIN_PIN') || 'RP26';
+      if (pinInput) pinInput.value = '';
       modal.classList.add('open');
     });
   }
@@ -1808,7 +2067,8 @@ function initSupabaseSettingsModal() {
     saveBtn.addEventListener('click', async () => {
       const url = urlInput.value.trim();
       const key = keyInput.value.trim();
-      const pin = pinInput.value.trim() || 'RP26';
+      const existingPin = localStorage.getItem('AKQC_ADMIN_PIN') || 'RP26';
+      const pin = pinInput.value.trim() || existingPin;
 
       if (!url || !key) {
         alert("Please enter both Supabase Project URL and Anon Key.");
