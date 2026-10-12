@@ -623,8 +623,46 @@ async function loadImgFromUrl(url) {
       if (img.complete) r();
       else { img.onload = r; img.onerror = r; }
     });
-    return img;
   }
+}
+
+// Format Candidate Name in Title Case with Capital Initials:
+// First letter big & all small in one name, second name first letter big, initials always capital
+function formatPosterParticipantName(rawName) {
+  if (!rawName) return "Participant Name";
+  const str = String(rawName).trim().replace(/\s+/g, ' ');
+  if (!str) return "Participant Name";
+
+  return str.split(' ').map(word => {
+    if (!word) return '';
+
+    // Handle hyphenated names like "Al-Hasan" or "Fatima-Zahra"
+    if (word.includes('-')) {
+      return word.split('-').map(part => {
+        if (!part) return '';
+        if (part.length === 1) return part.toUpperCase();
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      }).join('-');
+    }
+
+    // Single letter initial (with or without dot), e.g., "k", "K", "k.", "K."
+    if (/^[a-zA-Z]\.?$/.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // Sequence of initials with dots, e.g., "K.M." or "A.P.J." or "M.D."
+    if (/^([a-zA-Z]\.)+$/.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // 2-letter uppercase initials without vowels, e.g. "MD"
+    if (/^[a-zA-Z]{2}$/i.test(word) && !/[aeiouy]/i.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // Standard word: first letter big (Capital), rest small (lowercase)
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
 }
 
 // Generate Official Candidate Poster with Master Template
@@ -687,9 +725,9 @@ async function generatePosterBlob(details, photoImgElement) {
     }
     ctx.restore();
 
-    // 3. Participant Name in CAPS (Admin-adjustable position, size & color)
+    // 3. Participant Name (Title Case: First Letter Capital, Initials Capital)
     if (pConfig.show_name !== false) {
-      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const candidateName = formatPosterParticipantName((details && details.full_name) || 'Participant Name');
       const nameX = canvas.width * (pConfig.name_x / 100);
       const nameY = canvas.height * (pConfig.name_y / 100);
       const nameFontSize = Math.round(canvas.width * (pConfig.name_size / 100));
@@ -697,7 +735,7 @@ async function generatePosterBlob(details, photoImgElement) {
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+      ctx.font = `700 ${nameFontSize}px 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif`;
       ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
       ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
       ctx.fillStyle = pConfig.name_color || "#ffffff";
@@ -743,7 +781,7 @@ async function generatePosterBlob(details, photoImgElement) {
     ctx.restore();
 
     if (pConfig.show_name !== false) {
-      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const candidateName = formatPosterParticipantName((details && details.full_name) || 'Participant Name');
       const nameX = 1080 * (pConfig.name_x / 100);
       const nameY = 1350 * (pConfig.name_y / 100);
       const nameFontSize = Math.round(1080 * (pConfig.name_size / 100));
@@ -751,7 +789,7 @@ async function generatePosterBlob(details, photoImgElement) {
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${nameFontSize}px 'Playfair Display', sans-serif`;
+      ctx.font = `700 ${nameFontSize}px 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif`;
       ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
       ctx.shadowBlur = 8;
       ctx.fillStyle = pConfig.name_color || "#ffffff";
@@ -1346,9 +1384,9 @@ async function renderMasterPosterPreview(isDragging = false, dragTarget = null) 
   }
   ctx.restore();
 
-  // 2. Draw Sample Candidate Name in ALL CAPS (Adjustable place, size & color)
+  // 2. Draw Sample Candidate Name (Title Case: First Letter Capital, Initials Capital)
   if (cfg.show_name !== false) {
-    const sampleName = "SAMPLE PARTICIPANT NAME";
+    const sampleName = formatPosterParticipantName("Sample Participant Name");
     const nameX = canvas.width * (cfg.name_x / 100);
     const nameY = canvas.height * (cfg.name_y / 100);
     const nameFontSize = Math.round(canvas.width * (cfg.name_size / 100));
@@ -1356,7 +1394,7 @@ async function renderMasterPosterPreview(isDragging = false, dragTarget = null) 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+    ctx.font = `700 ${nameFontSize}px 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif`;
     ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
     ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
     ctx.fillStyle = cfg.name_color || "#ffffff";

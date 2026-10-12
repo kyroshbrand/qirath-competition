@@ -9,7 +9,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1664,6 +1664,45 @@ async function getClientMasterPosterImg(url) {
   return img;
 }
 
+// Format Candidate Name in Title Case with Capital Initials:
+// First letter big & all small in one name, second name first letter big, initials always capital
+function formatPosterParticipantName(rawName) {
+  if (!rawName) return "Participant Name";
+  const str = String(rawName).trim().replace(/\s+/g, ' ');
+  if (!str) return "Participant Name";
+
+  return str.split(' ').map(word => {
+    if (!word) return '';
+
+    // Handle hyphenated names like "Al-Hasan" or "Fatima-Zahra"
+    if (word.includes('-')) {
+      return word.split('-').map(part => {
+        if (!part) return '';
+        if (part.length === 1) return part.toUpperCase();
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      }).join('-');
+    }
+
+    // Single letter initial (with or without dot), e.g., "k", "K", "k.", "K."
+    if (/^[a-zA-Z]\.?$/.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // Sequence of initials with dots, e.g., "K.M." or "A.P.J." or "M.D."
+    if (/^([a-zA-Z]\.)+$/.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // 2-letter uppercase initials without vowels, e.g. "MD"
+    if (/^[a-zA-Z]{2}$/i.test(word) && !/[aeiouy]/i.test(word)) {
+      return word.toUpperCase();
+    }
+
+    // Standard word: first letter big (Capital), rest small (lowercase)
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+}
+
 // Canvas Poster Generator with Master Template Support
 async function generatePosterBlob(details, photoImgElement, customConfig = null) {
   const canvas = document.createElement("canvas");
@@ -1741,9 +1780,9 @@ async function generatePosterBlob(details, photoImgElement, customConfig = null)
     }
     ctx.restore();
 
-    // 3. Participant Name in CAPS (Admin-adjustable position, size & color)
+    // 3. Participant Name (Title Case: First Letter Capital, Initials Capital)
     if (pConfig.show_name !== false) {
-      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const candidateName = formatPosterParticipantName((details && details.full_name) || 'Participant Name');
       const nameX = canvas.width * (pConfig.name_x / 100);
       const nameY = canvas.height * (pConfig.name_y / 100);
       const nameFontSize = Math.round(canvas.width * (pConfig.name_size / 100));
@@ -1751,7 +1790,7 @@ async function generatePosterBlob(details, photoImgElement, customConfig = null)
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${nameFontSize}px 'Playfair Display', 'Plus Jakarta Sans', sans-serif`;
+      ctx.font = `700 ${nameFontSize}px 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif`;
       ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
       ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
       ctx.fillStyle = pConfig.name_color || "#ffffff";
@@ -1797,7 +1836,7 @@ async function generatePosterBlob(details, photoImgElement, customConfig = null)
     ctx.restore();
 
     if (pConfig.show_name !== false) {
-      const candidateName = ((details && details.full_name) || 'PARTICIPANT').toUpperCase();
+      const candidateName = formatPosterParticipantName((details && details.full_name) || 'Participant Name');
       const nameX = 1080 * (pConfig.name_x / 100);
       const nameY = 1350 * (pConfig.name_y / 100);
       const nameFontSize = Math.round(1080 * (pConfig.name_size / 100));
@@ -1805,7 +1844,7 @@ async function generatePosterBlob(details, photoImgElement, customConfig = null)
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${nameFontSize}px 'Playfair Display', sans-serif`;
+      ctx.font = `700 ${nameFontSize}px 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif`;
       ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
       ctx.shadowBlur = 8;
       ctx.fillStyle = pConfig.name_color || "#ffffff";
@@ -1952,28 +1991,9 @@ $("f").addEventListener("submit", async e => {
           Your official competition poster is ready. Share directly to your <strong>WhatsApp Status</strong> &amp; <strong>Instagram Story</strong> below!
         </p>
 
-        <!-- Official Master Poster Display (Interactive Touch & Drag Repositioning) -->
-        <div class="poster-showcase-container" id="posterShowcaseContainer" style="position:relative; touch-action:none; cursor:grab; user-select:none;">
-          <img id="liveOfficialPosterImg" src="${posterBlobUrl}" alt="Official Qirath Entry Poster - ${escapeHtml(saved.full_name)}" class="official-poster-img" title="Official Competition Poster" style="touch-action:none; pointer-events:none;">
-          <div id="posterTouchGuideOverlay" style="display:none; position:absolute; inset:0; pointer-events:none; border:2.5px dashed #d4a73b; border-radius:14px; box-shadow:inset 0 0 25px rgba(212,167,59,0.35);">
-            <div id="posterTouchGuideBadge" style="position:absolute; top:14px; left:50%; transform:translateX(-50%); background:rgba(6,14,9,0.94); border:1px solid #d4a73b; color:#fae8b2; font-size:12px; font-weight:700; padding:5px 14px; border-radius:20px; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,0.7);">
-              📍 Repositioning Photo…
-            </div>
-          </div>
-        </div>
-
-        <!-- Touch & Drag Hint & Micro-Nudge Toolbar -->
-        <div style="background:rgba(212,167,59,0.1); border:1px solid rgba(212,167,59,0.3); border-radius:10px; max-width:440px; margin:0 auto 12px; padding:10px 14px; text-align:center;">
-          <div style="font-size:12px; color:#d4a73b; font-weight:700; margin-bottom:8px;">
-            👆 <strong>Touch &amp; Drag Photo:</strong> Drag directly on the poster above to reposition your photo!
-          </div>
-          <div style="display:flex; justify-content:center; align-items:center; gap:6px; flex-wrap:wrap;">
-            <button type="button" id="btnCandNudgeUp" class="btn-nudge" title="Move Up">⬆️ Up</button>
-            <button type="button" id="btnCandNudgeDown" class="btn-nudge" title="Move Down">⬇️ Down</button>
-            <button type="button" id="btnCandNudgeLeft" class="btn-nudge" title="Move Left">⬅️ Left</button>
-            <button type="button" id="btnCandNudgeRight" class="btn-nudge" title="Move Right">➡️ Right</button>
-            <button type="button" id="btnCandNudgeReset" class="btn-nudge" style="border-color:rgba(212,167,59,0.6); color:#fff;" title="Reset Center">↺ Center</button>
-          </div>
+        <!-- Official Master Poster Display (Full Poster Image, not a card) -->
+        <div class="poster-showcase-container">
+          <img id="liveOfficialPosterImg" src="${posterBlobUrl}" alt="Official Qirath Entry Poster - ${escapeHtml(saved.full_name)}" class="official-poster-img" title="Official Competition Poster">
         </div>
 
         <!-- Optional Change Photo in Poster button -->
@@ -2055,160 +2075,6 @@ $("f").addEventListener("submit", async e => {
     `;
 
     let currentPosterBlob = posterBlob;
-    let activeCandPhotoImg = photoImg;
-
-    // Fetch master poster template settings to clone config for this candidate
-    let masterPosterData = { config: {} };
-    try {
-      if (typeof getMasterPosterFromBackend === 'function') {
-        masterPosterData = await getMasterPosterFromBackend();
-      }
-    } catch(e) {}
-    let candidatePosterConfig = normalizePosterConfig(masterPosterData.config);
-
-    const showcaseContainer = $("posterShowcaseContainer");
-    const guideOverlay = $("posterTouchGuideOverlay");
-    const guideBadge = $("posterTouchGuideBadge");
-    const officialImg = $("liveOfficialPosterImg");
-
-    let isPosterDragging = false;
-    let posterDragOffsetPctX = 0;
-    let posterDragOffsetPctY = 0;
-    let posterRenderTimeout = null;
-
-    async function applyCandidatePosterConfig() {
-      currentPosterBlob = await generatePosterBlob(saved, activeCandPhotoImg, candidatePosterConfig);
-      if (officialImg) officialImg.src = URL.createObjectURL(currentPosterBlob);
-    }
-
-    function getContainerTouchCoords(evt) {
-      if (!showcaseContainer) return { pctX: 50, pctY: 50 };
-      const rect = showcaseContainer.getBoundingClientRect();
-      if (!rect.width || !rect.height) return { pctX: 50, pctY: 50 };
-      let clientX, clientY;
-      if (evt.touches && evt.touches.length > 0) {
-        clientX = evt.touches[0].clientX;
-        clientY = evt.touches[0].clientY;
-      } else if (evt.changedTouches && evt.changedTouches.length > 0) {
-        clientX = evt.changedTouches[0].clientX;
-        clientY = evt.changedTouches[0].clientY;
-      } else {
-        clientX = evt.clientX;
-        clientY = evt.clientY;
-      }
-      const pctX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-      const pctY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
-      return { pctX, pctY };
-    }
-
-    function handlePosterStart(e) {
-      if (!showcaseContainer) return;
-      const coords = getContainerTouchCoords(e);
-      const cfg = candidatePosterConfig;
-
-      const halfW = (cfg.box_w || 38) / 2;
-      const halfH = (cfg.box_h || 40) / 2;
-      const boxLeft = (cfg.box_x || 50) - halfW;
-      const boxRight = (cfg.box_x || 50) + halfW;
-      const boxTop = (cfg.box_y || 44.5) - halfH;
-      const boxBottom = (cfg.box_y || 44.5) + halfH;
-      const margin = 12;
-
-      const touchInBox = coords.pctX >= (boxLeft - margin) && coords.pctX <= (boxRight + margin) &&
-                         coords.pctY >= (boxTop - margin) && coords.pctY <= (boxBottom + margin);
-
-      isPosterDragging = true;
-      if (touchInBox) {
-        posterDragOffsetPctX = (cfg.box_x || 50) - coords.pctX;
-        posterDragOffsetPctY = (cfg.box_y || 44.5) - coords.pctY;
-      } else {
-        posterDragOffsetPctX = 0;
-        posterDragOffsetPctY = 0;
-        cfg.box_x = Math.max(5, Math.min(95, Math.round(coords.pctX * 10) / 10));
-        cfg.box_y = Math.max(5, Math.min(95, Math.round(coords.pctY * 10) / 10));
-      }
-
-      if (e.cancelable) e.preventDefault();
-      showcaseContainer.style.cursor = 'grabbing';
-      if (guideOverlay) guideOverlay.style.display = 'block';
-      if (guideBadge) guideBadge.textContent = `📍 Photo: X ${cfg.box_x.toFixed(0)}%  Y ${cfg.box_y.toFixed(0)}%`;
-      applyCandidatePosterConfig();
-    }
-
-    function handlePosterMove(e) {
-      if (!isPosterDragging || !showcaseContainer) return;
-      const coords = getContainerTouchCoords(e);
-      const cfg = candidatePosterConfig;
-
-      const newX = Math.max(5, Math.min(95, Math.round((coords.pctX + posterDragOffsetPctX) * 10) / 10));
-      const newY = Math.max(5, Math.min(95, Math.round((coords.pctY + posterDragOffsetPctY) * 10) / 10));
-      cfg.box_x = newX;
-      cfg.box_y = newY;
-
-      if (guideBadge) guideBadge.textContent = `📍 Photo: X ${newX.toFixed(0)}%  Y ${newY.toFixed(0)}%`;
-      if (e.cancelable) e.preventDefault();
-
-      if (posterRenderTimeout) clearTimeout(posterRenderTimeout);
-      posterRenderTimeout = setTimeout(() => {
-        applyCandidatePosterConfig();
-      }, 40);
-    }
-
-    function handlePosterEnd() {
-      if (isPosterDragging) {
-        isPosterDragging = false;
-        if (showcaseContainer) showcaseContainer.style.cursor = 'grab';
-        if (guideOverlay) guideOverlay.style.display = 'none';
-        applyCandidatePosterConfig();
-      }
-    }
-
-    if (showcaseContainer) {
-      showcaseContainer.style.touchAction = 'none';
-      showcaseContainer.addEventListener('pointerdown', (e) => {
-        try { showcaseContainer.setPointerCapture(e.pointerId); } catch(err) {}
-        handlePosterStart(e);
-      });
-      showcaseContainer.addEventListener('pointermove', handlePosterMove);
-      showcaseContainer.addEventListener('pointerup', handlePosterEnd);
-      showcaseContainer.addEventListener('pointercancel', handlePosterEnd);
-
-      showcaseContainer.addEventListener('touchstart', (e) => {
-        if (e.cancelable) e.preventDefault();
-        handlePosterStart(e);
-      }, { passive: false });
-      window.addEventListener('touchmove', (e) => {
-        if (isPosterDragging) {
-          if (e.cancelable) e.preventDefault();
-          handlePosterMove(e);
-        }
-      }, { passive: false });
-      window.addEventListener('touchend', handlePosterEnd);
-      window.addEventListener('touchcancel', handlePosterEnd);
-    }
-
-    // Candidate Nudge buttons
-    const bindCandNudge = (id, dx, dy, reset = false) => {
-      const el = $(id);
-      if (!el) return;
-      el.addEventListener('click', () => {
-        const cfg = candidatePosterConfig;
-        if (reset) {
-          const defCfg = normalizePosterConfig(masterPosterData.config);
-          cfg.box_x = defCfg.box_x;
-          cfg.box_y = defCfg.box_y;
-        } else {
-          cfg.box_x = Math.max(5, Math.min(95, Math.round((cfg.box_x + dx) * 10) / 10));
-          cfg.box_y = Math.max(5, Math.min(95, Math.round((cfg.box_y + dy) * 10) / 10));
-        }
-        applyCandidatePosterConfig();
-      });
-    };
-    bindCandNudge('btnCandNudgeUp', 0, -2);
-    bindCandNudge('btnCandNudgeDown', 0, 2);
-    bindCandNudge('btnCandNudgeLeft', -2, 0);
-    bindCandNudge('btnCandNudgeRight', 2, 0);
-    bindCandNudge('btnCandNudgeReset', 0, 0, true);
 
     // Helper to download poster file
     function triggerPosterDownload() {
@@ -2309,9 +2175,8 @@ $("f").addEventListener("submit", async e => {
       newPhotoImg.src = URL.createObjectURL(comp);
       await new Promise(r => { newPhotoImg.onload = r; newPhotoImg.onerror = r; });
 
-      // Re-generate official poster with new photo and candidate's chosen position
-      activeCandPhotoImg = newPhotoImg;
-      currentPosterBlob = await generatePosterBlob(saved, activeCandPhotoImg, candidatePosterConfig);
+      // Re-generate official poster with new photo
+      currentPosterBlob = await generatePosterBlob(saved, newPhotoImg);
       $("liveOfficialPosterImg").src = URL.createObjectURL(currentPosterBlob);
 
       // Background update in Supabase
