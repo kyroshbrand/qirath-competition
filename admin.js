@@ -999,6 +999,8 @@ async function initMasterPosterStudio() {
           uploadedUrl = await uploadToStorage('aadhaar-cards', comp, 'master_template');
         }
         currentMasterPosterUrl = uploadedUrl;
+        masterPosterImageCache = null;
+        masterPosterCacheUrl = null;
         await saveMasterPosterToBackend(currentMasterPosterUrl, currentMasterPosterConfig);
         updateMasterPosterStatusLabel();
         await renderMasterPosterPreview();
@@ -1067,6 +1069,8 @@ async function initMasterPosterStudio() {
     resetBtn.addEventListener('click', async () => {
       if (confirm("Reset to default Royal Emerald & Gold Master Poster?")) {
         currentMasterPosterUrl = 'assets/master_poster_default.jpg';
+        masterPosterImageCache = null;
+        masterPosterCacheUrl = null;
         currentMasterPosterConfig = {
           box_w: 38,
           box_h: 40,
@@ -1087,6 +1091,172 @@ async function initMasterPosterStudio() {
       }
     });
   }
+
+  // Admin Micro-Nudge Buttons for fine-tuning
+  const bindNudge = (btnId, deltaX, deltaY, isReset = false) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const cfg = currentMasterPosterConfig;
+      if (isReset) {
+        cfg.box_x = 50;
+        cfg.box_y = 44.5;
+      } else {
+        cfg.box_x = Math.max(5, Math.min(95, Math.round((cfg.box_x + deltaX) * 10) / 10));
+        cfg.box_y = Math.max(5, Math.min(95, Math.round((cfg.box_y + deltaY) * 10) / 10));
+      }
+      if (sliderBoxX) sliderBoxX.value = cfg.box_x;
+      if (sliderBoxY) sliderBoxY.value = cfg.box_y;
+      if (labelBoxX) labelBoxX.textContent = cfg.box_x.toFixed(1) + '%';
+      if (labelBoxY) labelBoxY.textContent = cfg.box_y.toFixed(1) + '%';
+      renderMasterPosterPreview();
+    });
+  };
+
+  bindNudge('adminNudgeUp', 0, -1);
+  bindNudge('adminNudgeDown', 0, 1);
+  bindNudge('adminNudgeLeft', -1, 0);
+  bindNudge('adminNudgeRight', 1, 0);
+  bindNudge('adminNudgeCenter', 0, 0, true);
+
+  // Touch & Pointer Drag Controller for Master Poster Preview Canvas
+  const previewCanvas = document.getElementById('masterPosterPreviewCanvas');
+  let isDragging = false;
+  let dragMode = null; // 'box' or 'name'
+  let dragOffsetPctX = 0;
+  let dragOffsetPctY = 0;
+
+  function getCanvasTouchCoords(evt) {
+    if (!previewCanvas) return { pctX: 50, pctY: 50 };
+    const rect = previewCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return { pctX: 50, pctY: 50 };
+    let clientX, clientY;
+    if (evt.touches && evt.touches.length > 0) {
+      clientX = evt.touches[0].clientX;
+      clientY = evt.touches[0].clientY;
+    } else if (evt.changedTouches && evt.changedTouches.length > 0) {
+      clientX = evt.changedTouches[0].clientX;
+      clientY = evt.changedTouches[0].clientY;
+    } else {
+      clientX = evt.clientX;
+      clientY = evt.clientY;
+    }
+    const pctX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const pctY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    return { pctX, pctY };
+  }
+
+  function handleStart(e) {
+    if (!currentMasterPosterConfig || !previewCanvas) return;
+    const coords = getCanvasTouchCoords(e);
+    const cfg = currentMasterPosterConfig;
+
+    const halfW = (cfg.box_w || 38) / 2;
+    const halfH = (cfg.box_h || 40) / 2;
+    const boxLeft = (cfg.box_x || 50) - halfW;
+    const boxRight = (cfg.box_x || 50) + halfW;
+    const boxTop = (cfg.box_y || 44.5) - halfH;
+    const boxBottom = (cfg.box_y || 44.5) + halfH;
+
+    const margin = 10;
+    const touchInBox = coords.pctX >= (boxLeft - margin) && coords.pctX <= (boxRight + margin) &&
+                       coords.pctY >= (boxTop - margin) && coords.pctY <= (boxBottom + margin);
+
+    const touchNearName = cfg.show_name &&
+                          Math.abs(coords.pctX - (cfg.name_x || 50)) < 36 &&
+                          Math.abs(coords.pctY - (cfg.name_y || 68)) < 6;
+
+    if (touchNearName && !touchInBox) {
+      dragMode = 'name';
+      isDragging = true;
+      dragOffsetPctX = (cfg.name_x || 50) - coords.pctX;
+      dragOffsetPctY = (cfg.name_y || 68) - coords.pctY;
+    } else {
+      dragMode = 'box';
+      isDragging = true;
+      if (touchInBox) {
+        dragOffsetPctX = (cfg.box_x || 50) - coords.pctX;
+        dragOffsetPctY = (cfg.box_y || 44.5) - coords.pctY;
+      } else {
+        dragOffsetPctX = 0;
+        dragOffsetPctY = 0;
+        cfg.box_x = Math.max(5, Math.min(95, Math.round(coords.pctX * 10) / 10));
+        cfg.box_y = Math.max(5, Math.min(95, Math.round(coords.pctY * 10) / 10));
+        if (sliderBoxX) sliderBoxX.value = cfg.box_x;
+        if (sliderBoxY) sliderBoxY.value = cfg.box_y;
+        if (labelBoxX) labelBoxX.textContent = cfg.box_x.toFixed(1) + '%';
+        if (labelBoxY) labelBoxY.textContent = cfg.box_y.toFixed(1) + '%';
+      }
+    }
+
+    if (e.cancelable) e.preventDefault();
+    previewCanvas.style.cursor = 'grabbing';
+    renderMasterPosterPreview(true, dragMode);
+  }
+
+  function handleMove(e) {
+    if (!isDragging || !dragMode || !currentMasterPosterConfig) return;
+    const coords = getCanvasTouchCoords(e);
+    const cfg = currentMasterPosterConfig;
+
+    if (dragMode === 'box') {
+      const newX = Math.max(5, Math.min(95, Math.round((coords.pctX + dragOffsetPctX) * 10) / 10));
+      const newY = Math.max(5, Math.min(95, Math.round((coords.pctY + dragOffsetPctY) * 10) / 10));
+      cfg.box_x = newX;
+      cfg.box_y = newY;
+      if (sliderBoxX) sliderBoxX.value = newX;
+      if (sliderBoxY) sliderBoxY.value = newY;
+      if (labelBoxX) labelBoxX.textContent = newX.toFixed(1) + '%';
+      if (labelBoxY) labelBoxY.textContent = newY.toFixed(1) + '%';
+    } else if (dragMode === 'name') {
+      const newX = Math.max(5, Math.min(95, Math.round((coords.pctX + dragOffsetPctX) * 10) / 10));
+      const newY = Math.max(5, Math.min(95, Math.round((coords.pctY + dragOffsetPctY) * 10) / 10));
+      cfg.name_x = newX;
+      cfg.name_y = newY;
+      if (sliderNameX) sliderNameX.value = newX;
+      if (sliderNameY) sliderNameY.value = newY;
+      if (labelNameX) labelNameX.textContent = newX.toFixed(1) + '%';
+      if (labelNameY) labelNameY.textContent = newY.toFixed(1) + '%';
+    }
+
+    if (e.cancelable) e.preventDefault();
+    renderMasterPosterPreview(true, dragMode);
+  }
+
+  function handleEnd() {
+    if (isDragging) {
+      isDragging = false;
+      dragMode = null;
+      if (previewCanvas) previewCanvas.style.cursor = 'grab';
+      renderMasterPosterPreview(false);
+    }
+  }
+
+  if (previewCanvas) {
+    previewCanvas.style.touchAction = 'none';
+
+    previewCanvas.addEventListener('pointerdown', (e) => {
+      try { previewCanvas.setPointerCapture(e.pointerId); } catch(err) {}
+      handleStart(e);
+    });
+    previewCanvas.addEventListener('pointermove', handleMove);
+    previewCanvas.addEventListener('pointerup', handleEnd);
+    previewCanvas.addEventListener('pointercancel', handleEnd);
+
+    // Fallback touch events for iOS/Android edge cases
+    previewCanvas.addEventListener('touchstart', (e) => {
+      if (e.cancelable) e.preventDefault();
+      handleStart(e);
+    }, { passive: false });
+    window.addEventListener('touchmove', (e) => {
+      if (isDragging) {
+        if (e.cancelable) e.preventDefault();
+        handleMove(e);
+      }
+    }, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+  }
 }
 
 function updateMasterPosterStatusLabel() {
@@ -1099,7 +1269,23 @@ function updateMasterPosterStatusLabel() {
   }
 }
 
-async function renderMasterPosterPreview() {
+// Master Poster In-Memory Image Cache for Silky 60fps Dragging
+let masterPosterImageCache = null;
+let masterPosterCacheUrl = null;
+
+async function getMasterPosterImage(url) {
+  if (masterPosterCacheUrl === url && masterPosterImageCache && masterPosterImageCache.complete && masterPosterImageCache.naturalWidth > 0) {
+    return masterPosterImageCache;
+  }
+  const img = await loadImgFromUrl(url);
+  if (img && img.complete && img.naturalWidth > 0) {
+    masterPosterImageCache = img;
+    masterPosterCacheUrl = url;
+  }
+  return img;
+}
+
+async function renderMasterPosterPreview(isDragging = false, dragTarget = null) {
   const canvas = document.getElementById('masterPosterPreviewCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -1107,7 +1293,7 @@ async function renderMasterPosterPreview() {
   let posterImg = null;
   const urlToLoad = currentMasterPosterUrl || 'assets/master_poster_default.jpg';
   try {
-    posterImg = await loadImgFromUrl(urlToLoad);
+    posterImg = await getMasterPosterImage(urlToLoad);
   } catch(e) {}
 
   if (!posterImg || !posterImg.complete || posterImg.naturalWidth === 0) {
@@ -1175,6 +1361,55 @@ async function renderMasterPosterPreview() {
     ctx.shadowBlur = Math.max(6, nameFontSize * 0.35);
     ctx.fillStyle = cfg.name_color || "#ffffff";
     ctx.fillText(sampleName, nameX, nameY);
+    ctx.restore();
+  }
+
+  // 3. Draw Touch / Drag Overlay Guides when touching or moving
+  if (isDragging) {
+    ctx.save();
+    if (dragTarget === 'box') {
+      ctx.strokeStyle = '#d4a73b';
+      ctx.lineWidth = Math.max(3, canvas.width * 0.0035);
+      ctx.setLineDash([10, 8]);
+      drawRoundedRectPath(ctx, boxX, boxY, boxW, boxH, curveRadius);
+      ctx.stroke();
+
+      const handleR = Math.max(6, canvas.width * 0.009);
+      ctx.fillStyle = '#fae8b2';
+      ctx.strokeStyle = '#050c08';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      [[boxX, boxY], [boxX + boxW, boxY], [boxX, boxY + boxH], [boxX + boxW, boxY + boxH]].forEach(([hx, hy]) => {
+        ctx.beginPath();
+        ctx.arc(hx, hy, handleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      const badgeW = 240, badgeH = 38;
+      ctx.fillStyle = 'rgba(6, 14, 9, 0.9)';
+      ctx.fillRect(centerX - badgeW/2, centerY - badgeH/2, badgeW, badgeH);
+      ctx.strokeStyle = '#d4a73b';
+      ctx.strokeRect(centerX - badgeW/2, centerY - badgeH/2, badgeW, badgeH);
+      ctx.fillStyle = '#fae8b2';
+      ctx.font = `bold ${Math.round(canvas.width * 0.024)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`📍 X: ${cfg.box_x}%  Y: ${cfg.box_y}%`, centerX, centerY);
+    } else if (dragTarget === 'name') {
+      const nameX = canvas.width * (cfg.name_x / 100);
+      const nameY = canvas.height * (cfg.name_y / 100);
+      const badgeW = 240, badgeH = 36;
+      ctx.fillStyle = 'rgba(6, 14, 9, 0.9)';
+      ctx.fillRect(nameX - badgeW/2, nameY - badgeH/2, badgeW, badgeH);
+      ctx.strokeStyle = '#d4a73b';
+      ctx.strokeRect(nameX - badgeW/2, nameY - badgeH/2, badgeW, badgeH);
+      ctx.fillStyle = '#fae8b2';
+      ctx.font = `bold ${Math.round(canvas.width * 0.022)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`✍️ Name: X ${cfg.name_x}%  Y ${cfg.name_y}%`, nameX, nameY);
+    }
     ctx.restore();
   }
 }

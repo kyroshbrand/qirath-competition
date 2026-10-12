@@ -303,12 +303,19 @@
             <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--gold-200); font-weight:700; display:block; margin-bottom:10px;">
               Live Template Preview (Sample Face)
             </span>
-            <div style="max-width:280px; margin:0 auto; box-shadow:0 10px 30px rgba(0,0,0,0.8); border-radius:8px; overflow:hidden;">
-              <canvas id="masterPosterPreviewCanvas" style="width:100%; height:auto; display:block; background:#000;"></canvas>
+            <div style="max-width:290px; margin:0 auto; box-shadow:0 12px 35px rgba(0,0,0,0.85); border-radius:8px; overflow:hidden; position:relative; border:1px solid rgba(212,167,59,0.3);">
+              <canvas id="masterPosterPreviewCanvas" style="width:100%; height:auto; display:block; background:#000; touch-action:none; cursor:grab; user-select:none;"></canvas>
             </div>
-            <small style="color:var(--text-muted); font-size:11px; display:block; margin-top:10px;">
-              This is exactly what all 1,000+ candidates will see upon registration.
-            </small>
+            <div style="background:rgba(212,167,59,0.12); border:1px solid rgba(212,167,59,0.35); border-radius:6px; padding:7px 10px; margin-top:10px; font-size:11.5px; color:var(--gold-200); text-align:center; line-height:1.4;">
+              👆 <strong>Touch &amp; Drag Position:</strong> Touch or drag the candidate photo directly on the poster above to move it anywhere in real-time!
+            </div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap;">
+              <button type="button" id="adminNudgeUp" class="btn-nudge" title="Nudge Photo Up">⬆️ Up</button>
+              <button type="button" id="adminNudgeDown" class="btn-nudge" title="Nudge Photo Down">⬇️ Down</button>
+              <button type="button" id="adminNudgeLeft" class="btn-nudge" title="Nudge Photo Left">⬅️ Left</button>
+              <button type="button" id="adminNudgeRight" class="btn-nudge" title="Nudge Photo Right">➡️ Right</button>
+              <button type="button" id="adminNudgeCenter" class="btn-nudge" style="border-color:rgba(212,167,59,0.6); color:#fff;" title="Center Photo">↺ Center</button>
+            </div>
           </div>
 
           <!-- Upload & Controls -->

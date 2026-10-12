@@ -1309,3 +1309,26 @@ footer {
   .form-step-indicators { display: none; }
   .table-toolbar { flex-direction: column; align-items: stretch; }
 }
+
+/* Quick Nudge Buttons for Fine-tuning Poster Photo Position */
+.btn-nudge {
+  background: #0f1c13;
+  color: var(--gold-200, #fae8b2);
+  border: 1px solid rgba(212, 167, 59, 0.4);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.btn-nudge:hover, .btn-nudge:active {
+  background: var(--gold-primary, #d4a73b);
+  color: #060a08;
+  border-color: var(--gold-primary, #d4a73b);
+}
+
