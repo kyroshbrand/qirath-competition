@@ -895,15 +895,37 @@
       box-sizing: border-box;
       animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    @keyframes slideUpToast {
-      from {
-        opacity: 0;
-        transform: translate(-50%, 20px);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
+    /* Fast Background Upload Badge */
+    .upload-badge {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #0d1810;
+      border: 1px solid rgba(212, 167, 59, 0.35);
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin-top: 8px;
+      font-size: 11.5px;
+      color: #fae8b2;
+      font-family: var(--sans);
+    }
+    .upload-badge.ready {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: #22c55e;
+      color: #4ade80;
+      font-weight: 700;
+    }
+    .upload-mini-bar {
+      height: 6px;
+      background: #18281d;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .upload-mini-bar div {
+      height: 100%;
+      background: linear-gradient(90deg, #d4a73b, #22c55e);
+      transition: width 0.15s ease;
     }
   </style>
 </head>
@@ -1131,6 +1153,10 @@ $("video_link").addEventListener("input", () => {
   refresh();
 });
 
+// Pre-compression and Background Pre-Upload Tracking
+let activeVideoUpload = null; 
+let precompressedImages = {};
+
 // Clear Uploaded File Function
 function clearFile(id) {
   const input = $(id);
@@ -1142,15 +1168,20 @@ function clearFile(id) {
   if (id === "video") {
     const warn = $("vid_warn");
     if (warn) warn.style.display = "none";
+    if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
+      try { activeVideoUpload.abort(); } catch(e) {}
+    }
+    activeVideoUpload = null;
   }
   if (id === "photo") {
     activeParticipantPhotoBlob = null;
   }
+  delete precompressedImages[id];
   refresh();
 }
 window.clearFile = clearFile;
 
-// Instant File Previews & Pre-Upload Validation with Delete Option
+// Instant File Previews & Background Pre-Upload
 ["photo", "aadhaar", "video", "igshot", "washot"].forEach(id => {
   $(id).addEventListener("change", () => {
     const f = $(id).files[0], box = $("p_" + id);
@@ -1159,9 +1190,14 @@ window.clearFile = clearFile;
     if (label) label.classList.toggle("done", !!f);
     
     // Check oversized video immediately
-    if (id === "video" && f) {
+    if (id === "video") {
+      if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
+        try { activeVideoUpload.abort(); } catch(e) {}
+      }
+      activeVideoUpload = null;
+
       const warn = $("vid_warn");
-      if (f.size > MAX_DIRECT_BYTES) {
+      if (f && f.size > MAX_DIRECT_BYTES) {
         const mb = (f.size / (1024 * 1024)).toFixed(1);
         warn.style.display = "block";
         warn.innerHTML = `⚠️ This video file is <strong>${mb} MB</strong>, which exceeds the direct upload limit (100 MB).<br>Please select a clip up to 100 MB, or click the <strong>Google Drive / YouTube Link</strong> tab above to paste your link!`;
@@ -1171,6 +1207,13 @@ window.clearFile = clearFile;
     }
 
     if (f) {
+      // Pre-compress images immediately in the background
+      if (id !== "video") {
+        compressImage(f).then(comp => {
+          precompressedImages[id] = comp;
+        });
+      }
+
       const u = URL.createObjectURL(f);
       let el;
       if (id !== "video") {
@@ -1200,6 +1243,66 @@ window.clearFile = clearFile;
       };
 
       box.append(el, p, delBtn);
+
+      // Start instant high-speed background pre-upload for video
+      if (id === "video" && f.size <= MAX_DIRECT_BYTES) {
+        const badge = document.createElement("div");
+        badge.id = "vid_bg_badge";
+        badge.className = "upload-badge";
+        badge.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>⚡ <strong>Uploading in background…</strong> <span id="vid_bg_txt">0%</span></span>
+            <span style="font-size:10.5px; opacity:0.8;">${size(f.size)}</span>
+          </div>
+          <div class="upload-mini-bar"><div id="vid_bg_fill" style="width:0%"></div></div>
+          <small style="opacity:0.75; font-size:10px; margin-top:2px;">Pre-uploading now so your final submit will be instantaneous!</small>
+        `;
+        box.append(badge);
+
+        const onProgress = (pct, loaded, total) => {
+          const txt = document.getElementById("vid_bg_txt");
+          const fill = document.getElementById("vid_bg_fill");
+          if (txt) txt.textContent = `${pct}% (${size(loaded)} / ${size(total)})`;
+          if (fill) fill.style.width = `${pct}%`;
+          if (pct >= 100) {
+            const b = document.getElementById("vid_bg_badge");
+            if (b) {
+              b.className = "upload-badge ready";
+              b.innerHTML = `✓ Recitation video 100% uploaded & ready (${size(total)}) — Final submit will be instant!`;
+            }
+          }
+        };
+
+        const tempFolder = `AKQC-2026-${Date.now().toString().slice(-5)}`;
+        let uploadHandle;
+        if (typeof startUploadToStorage === 'function') {
+          uploadHandle = startUploadToStorage('qirath-videos', f, tempFolder, onProgress);
+        } else {
+          uploadHandle = {
+            promise: uploadToStorage('qirath-videos', f, tempFolder, onProgress),
+            abort: () => {}
+          };
+        }
+
+        const uploadObj = {
+          file: f,
+          promise: uploadHandle.promise,
+          abort: uploadHandle.abort,
+          isDone: false,
+          url: null
+        };
+
+        uploadHandle.promise.then(url => {
+          uploadObj.isDone = true;
+          uploadObj.url = url;
+        }).catch(err => {
+          if (err.message !== "Upload aborted by user") {
+            console.warn("Background upload error, will retry on submit:", err);
+          }
+        });
+
+        activeVideoUpload = uploadObj;
+      }
     }
     refresh();
   });
@@ -1697,47 +1800,66 @@ $("f").addEventListener("submit", async e => {
 
   bar.style.display = "block";
   go.disabled = true;
-  hint.textContent = "1/3 Optimizing photos & proofs for high-speed upload…";
-  fill.style.width = "20%";
+  hint.textContent = "⚡ Fast submitting your official entry…";
+  fill.style.width = "30%";
 
   // Collision-free Registration ID for 1000+ candidates
   const uniqueSuffix = Date.now().toString().slice(-5) + Math.floor(100 + Math.random() * 900);
   const regId = `AKQC-2026-${uniqueSuffix}`;
 
   try {
-    // 1. High-speed client-side image compression in parallel (takes ~150ms)
+    // 1. Get precompressed images or compress concurrently
     const [compPhoto, compAadhaar, compIg, compWa] = await Promise.all([
-      compressImage($("photo").files[0]),
-      compressImage($("aadhaar").files[0]),
-      compressImage($("igshot").files[0]),
-      compressImage($("washot").files[0])
+      precompressedImages['photo'] || compressImage($("photo").files[0]),
+      precompressedImages['aadhaar'] || compressImage($("aadhaar").files[0]),
+      precompressedImages['igshot'] || compressImage($("igshot").files[0]),
+      precompressedImages['washot'] || compressImage($("washot").files[0])
     ]);
 
-    fill.style.width = "40%";
-    hint.textContent = "2/3 Uploading photo & verified documents…";
+    fill.style.width = "50%";
+    hint.textContent = "⚡ Uploading photo, verified documents & video concurrently…";
 
-    // 2. Parallel upload of lightweight images (takes ~1 second)
-    const [photoUrl, aadhaarUrl, igUrl, waUrl] = await Promise.all([
+    // 2. Video Upload Promise (Instant if pre-uploaded in background)
+    let videoPromise;
+    if (videoMode === "link") {
+      videoPromise = Promise.resolve($("video_link").value.trim());
+    } else if (activeVideoUpload && activeVideoUpload.isDone && activeVideoUpload.url) {
+      // PRE-UPLOAD WAS ALREADY 100% COMPLETED IN BACKGROUND! ZERO WAIT!
+      videoPromise = Promise.resolve(activeVideoUpload.url);
+    } else if (activeVideoUpload && activeVideoUpload.promise) {
+      // Background upload is currently in flight! Connect to it!
+      videoPromise = activeVideoUpload.promise;
+    } else {
+      // Start upload now with live progress tracking
+      videoPromise = uploadToStorage('qirath-videos', $("video").files[0], regId, (pct, loaded, total) => {
+        hint.textContent = `⚡ Uploading recitation video: ${pct}% (${size(loaded)} / ${size(total)})…`;
+        fill.style.width = `${Math.min(95, 50 + Math.round(pct * 0.45))}%`;
+      });
+    }
+
+    // Connect progress watcher if background upload is currently in flight
+    let pollInterval = null;
+    if (videoMode === "file" && activeVideoUpload && !activeVideoUpload.isDone) {
+      pollInterval = setInterval(() => {
+        const txt = document.getElementById("vid_bg_txt");
+        if (txt && txt.textContent) {
+          hint.textContent = `⚡ Uploading recitation video: ${txt.textContent}…`;
+        }
+      }, 250);
+      videoPromise.finally(() => { if (pollInterval) clearInterval(pollInterval); });
+    }
+
+    // 3. ALL UPLOADS (Photo, Aadhaar, IG Screenshot, WA Screenshot, Video) RUN PARALLEL IN CONCURRENT STREAMS!
+    const [photoUrl, aadhaarUrl, igUrl, waUrl, videoUrl] = await Promise.all([
       uploadToStorage('aadhaar-cards', compPhoto, `${regId}_photo`),
       uploadToStorage('aadhaar-cards', compAadhaar, regId),
       uploadToStorage('follow-proofs', compIg, regId),
-      uploadToStorage('follow-proofs', compWa, regId)
+      uploadToStorage('follow-proofs', compWa, regId),
+      videoPromise
     ]);
 
-    fill.style.width = "65%";
-
-    // 3. Process recitation video (Direct upload OR Cloud link)
-    let videoUrl = "";
-    if (videoMode === "link") {
-      videoUrl = $("video_link").value.trim();
-    } else {
-      hint.textContent = "3/3 Uploading recitation video (up to 100 MB)… please keep page open.";
-      fill.style.width = "75%";
-      videoUrl = await uploadToStorage('qirath-videos', $("video").files[0], regId);
-    }
-
-    fill.style.width = "90%";
-    hint.textContent = "Generating official poster & saving entry…";
+    fill.style.width = "92%";
+    hint.textContent = "⚡ Generating official poster & saving entry…";
 
     const ageNum = parseInt($("age").value, 10);
     const category = "Age 8 - 18 Years"; // Only one category between 8 and 18

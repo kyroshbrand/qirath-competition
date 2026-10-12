@@ -73,20 +73,114 @@ function resetToDemoMode() {
 }
 
 /**
- * Upload a file to a Supabase Storage Bucket
+ * Upload a file to a Supabase Storage Bucket with high-speed streaming and real-time progress
  */
-async function uploadToStorage(bucketName, file, folder = '') {
-  if (!isSupabaseConfigured()) {
-    // Demo mode: Return Object URL or simulated URL
-    return URL.createObjectURL(file);
+async function uploadToStorage(bucketName, file, folder = '', onProgress = null) {
+  const uploadHandle = startUploadToStorage(bucketName, file, folder, onProgress);
+  return uploadHandle.promise;
+}
+
+/**
+ * Start an abortable upload with live progress tracking
+ * Returns: { promise, abort, filePath }
+ */
+function startUploadToStorage(bucketName, file, folder = '', onProgress = null) {
+  if (!file) {
+    return {
+      promise: Promise.reject(new Error("No file provided for upload")),
+      abort: () => {},
+      filePath: ""
+    };
   }
 
-  const fileExt = file.name.split('.').pop();
+  if (!isSupabaseConfigured()) {
+    // Demo mode: Return local Object URL instantly
+    if (onProgress) try { onProgress(100, file.size, file.size); } catch(e) {}
+    return {
+      promise: Promise.resolve(URL.createObjectURL(file)),
+      abort: () => {},
+      filePath: file.name
+    };
+  }
+
+  const fileExt = file.name.split('.').pop() || 'bin';
   const cleanName = file.name.replace(/[^a-zA-Z0-9]/g, '_');
-  // Collision-free unique filename for 1000+ candidates
   const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const filePath = `${folder ? folder + '/' : ''}${uniqueId}_${cleanName}.${fileExt}`;
 
+  const supabaseUrl = (window.localStorage.getItem('AKQC_SUPABASE_URL') || SUPABASE_CONFIG.url || '').replace(/\/$/, '');
+  const supabaseKey = window.localStorage.getItem('AKQC_SUPABASE_ANON_KEY') || SUPABASE_CONFIG.anonKey || '';
+
+  let xhrInstance = null;
+
+  const promise = new Promise(async (resolve, reject) => {
+    // High-speed direct XHR upload with live percentage & bandwidth tracking
+    if (typeof XMLHttpRequest !== 'undefined' && supabaseUrl && supabaseKey) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhrInstance = xhr;
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucketName}/${encodeURIComponent(filePath).replace(/%2F/g, '/')}`;
+
+        xhr.open('POST', uploadUrl, true);
+        xhr.setRequestHeader('apikey', supabaseKey);
+        xhr.setRequestHeader('Authorization', `Bearer ${supabaseKey}`);
+        xhr.setRequestHeader('x-upsert', 'true');
+        if (file.type) {
+          xhr.setRequestHeader('Content-Type', file.type);
+        }
+
+        if (onProgress && xhr.upload) {
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable && evt.total > 0) {
+              const pct = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+              try { onProgress(pct, evt.loaded, evt.total); } catch(e) {}
+            }
+          };
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
+            if (onProgress) try { onProgress(100, file.size, file.size); } catch(e) {}
+            resolve(publicUrl);
+          } else {
+            console.warn(`Direct XHR upload returned status ${xhr.status}, falling back to SDK:`, xhr.responseText);
+            uploadViaSdk(bucketName, file, filePath).then(resolve).catch(reject);
+          }
+        };
+
+        xhr.onerror = () => {
+          console.warn('Direct XHR network error, falling back to SDK upload');
+          uploadViaSdk(bucketName, file, filePath).then(resolve).catch(reject);
+        };
+
+        xhr.onabort = () => {
+          reject(new Error("Upload aborted by user"));
+        };
+
+        xhr.send(file);
+        return;
+      } catch (err) {
+        console.warn('Error starting XHR upload, using SDK fallback:', err);
+      }
+    }
+
+    // Fallback via Supabase SDK
+    uploadViaSdk(bucketName, file, filePath).then(resolve).catch(reject);
+  });
+
+  return {
+    promise,
+    abort: () => {
+      if (xhrInstance && xhrInstance.readyState !== 4 && xhrInstance.readyState !== 0) {
+        try { xhrInstance.abort(); } catch(e) {}
+      }
+    },
+    filePath
+  };
+}
+
+async function uploadViaSdk(bucketName, file, filePath) {
   const { data, error } = await supabaseClient.storage
     .from(bucketName)
     .upload(filePath, file, {
@@ -99,7 +193,6 @@ async function uploadToStorage(bucketName, file, folder = '') {
     throw new Error(`Failed to upload to ${bucketName}: ${error.message}`);
   }
 
-  // Get Public URL
   const { data: urlData } = supabaseClient.storage
     .from(bucketName)
     .getPublicUrl(filePath);
