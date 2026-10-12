@@ -878,6 +878,12 @@
 
 <script src="supabase-config.js"></script>
 <script>
+function escapeHtml(str) {
+  return (str || '').replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
 const BRANCHES = ["Puttur", "Thokkotu", "B.C Road", "Sullia"];
 const $ = id => document.getElementById(id);
 
