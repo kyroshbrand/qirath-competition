@@ -1046,8 +1046,8 @@
         <!-- Mode 1: Direct File Upload -->
         <div id="wrap_vid_file">
           <label class="file" id="l_video">
-            <input id="video" type="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv,.mp3,.m4a,.wav,.aac,.ogg">
-            <b>Tap to choose recitation video / audio (Max 2 Min)</b>
+            <input id="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv">
+            <b>Tap to choose recitation video (Max 2 Min)</b>
             <small>Duration must not exceed 2 minutes • Direct upload up to 100 MB</small>
           </label>
           <div class="prev" id="p_video"></div>
@@ -1214,7 +1214,7 @@ window.clearFile = clearFile;
     const label = $("l_" + id);
     if (label) label.classList.toggle("done", !!f);
     
-    // Check oversized video immediately
+    // Check oversized video immediately and reject audio-only files
     if (id === "video") {
       videoDurationExceeded = false;
       videoDurationSec = 0;
@@ -1222,6 +1222,17 @@ window.clearFile = clearFile;
         try { activeVideoUpload.abort(); } catch(e) {}
       }
       activeVideoUpload = null;
+
+      // Reject audio-only files
+      if (f && (f.type.startsWith("audio/") || /\.(mp3|m4a|wav|aac|ogg|wma|m4r|opus|flac)$/i.test(f.name))) {
+        clearFile("video");
+        const warn = $("vid_warn");
+        if (warn) {
+          warn.style.display = "block";
+          warn.innerHTML = "⚠️ <strong>Only Video files are permitted:</strong> Audio recordings are not accepted for this competition. Please select a video file.";
+        }
+        return;
+      }
 
       const warn = $("vid_warn");
       if (f && f.size > MAX_DIRECT_BYTES) {
@@ -1247,8 +1258,7 @@ window.clearFile = clearFile;
         el = document.createElement("img");
         el.src = u;
       } else {
-        const au = f.type.startsWith("audio/") || /\.(mp3|m4a|wav|aac|ogg)$/i.test(f.name);
-        el = document.createElement(au ? "audio" : "video");
+        el = document.createElement("video");
         el.src = u;
         el.controls = true;
         el.preload = "metadata";
