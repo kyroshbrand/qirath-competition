@@ -202,6 +202,13 @@ async function loadAndRenderParticipants() {
   }
 }
 
+const RANK_CONFIG = {
+  1: { badge: '🥇 #1 LEADER', className: 'rank-pos-1' },
+  2: { badge: '🥈 #2 RUNNER-UP', className: 'rank-pos-2' },
+  3: { badge: '🥉 #3 3RD PLACE', className: 'rank-pos-3' },
+  4: { badge: '🎖️ #4 CONTENDER', className: 'rank-pos-4' }
+};
+
 function renderStatsCounters(list) {
   const totalEl = document.getElementById('statTotalCount');
   const pendingEl = document.getElementById('statPendingCount');
@@ -213,69 +220,128 @@ function renderStatsCounters(list) {
   if (approvedEl) approvedEl.textContent = list.filter(p => p.status === 'Approved').length;
   if (shortlistEl) shortlistEl.textContent = list.filter(p => p.status === 'Shortlisted').length;
 
-  // 4 Outlets Breakdown (Total, Approved, Pending)
+  // 4 Outlets Dynamic Ranking Calculation (Sorted by total submissions descending)
   const branches = ["Puttur", "Thokkotu", "B.C Road", "Sullia"];
-  branches.forEach(b => {
-    const bKey = b.replace(/[^a-zA-Z]/g, '');
-    const countEl = document.getElementById(`statBranch_${bKey}`);
-    const subEl = document.getElementById(`statBranch_${bKey}_sub`);
+  const totalSubmissions = list.length;
 
+  const branchStats = branches.map(b => {
     const branchList = list.filter(p => p.branch === b);
+    const count = branchList.length;
     const approvedCount = branchList.filter(p => p.status === 'Approved' || p.status === 'Shortlisted').length;
     const pendingCount = branchList.filter(p => p.status === 'Pending Review').length;
+    const sharePct = totalSubmissions > 0 ? ((count / totalSubmissions) * 100).toFixed(1) : '0.0';
 
-    if (countEl) countEl.textContent = branchList.length;
-    if (subEl) subEl.textContent = `${approvedCount} Approved • ${pendingCount} Pending`;
+    return {
+      branch: b,
+      count: count,
+      approvedCount: approvedCount,
+      pendingCount: pendingCount,
+      sharePct: sharePct
+    };
   });
+
+  // Sort descending by total submissions (highest count is #1 Leader)
+  branchStats.sort((a, b) => b.count - a.count);
+
+  const grid = document.getElementById('adminRankingGrid');
+  if (grid) {
+    grid.innerHTML = branchStats.map((item, idx) => {
+      const rankNum = idx + 1;
+      const rankMeta = RANK_CONFIG[rankNum] || RANK_CONFIG[4];
+      const isActive = currentFilter.branch === item.branch;
+      const bKey = item.branch.replace(/[^a-zA-Z]/g, '');
+
+      return `
+        <div class="admin-rank-card ${rankMeta.className} ${isActive ? 'active-rank-card' : ''}"
+             id="cardRank_${bKey}"
+             data-branch="${item.branch}"
+             onclick="window.onRankCardClick('${item.branch}')"
+             title="Click to filter entries for ${item.branch}">
+          
+          <div class="rank-card-header">
+            <div class="rank-badge-tag">${rankMeta.badge}</div>
+            <span class="rank-active-pill">Filtered ✓</span>
+          </div>
+
+          <div class="rank-branch-title">
+            <span class="rank-pin-icon">📍</span>
+            <span class="rank-branch-name">${item.branch}</span>
+          </div>
+
+          <div class="rank-metric-box">
+            <span class="rank-metric-number">${item.count}</span>
+            <span class="rank-metric-label">Entries</span>
+          </div>
+
+          <div class="rank-share-wrapper">
+            <div class="rank-share-info">
+              <span>Submission Share</span>
+              <span class="rank-share-percent">${item.sharePct}%</span>
+            </div>
+            <div class="rank-progress-track">
+              <div class="rank-progress-fill" style="width:${Math.max(item.count > 0 ? 5 : 0, parseFloat(item.sharePct))}%"></div>
+            </div>
+          </div>
+
+          <div class="rank-sub-stats">
+            <span class="rank-stat-approved">✓ ${item.approvedCount} Approved</span>
+            <span>•</span>
+            <span class="rank-stat-pending">⏳ ${item.pendingCount} Pending</span>
+          </div>
+
+          <div class="rank-card-footer">
+            <span class="rank-filter-hint">Tap to filter &rarr;</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
-// 4 Outlets Interactive Cards Filtering
-function initOutletCardsFilter() {
+// 4 Outlets Interactive Ranking Filtering
+function updateActiveOutletUI(selectedBranch) {
   const branches = ["Puttur", "Thokkotu", "B.C Road", "Sullia"];
   const allBtn = document.getElementById('btnFilterAllBranches');
   const branchSelect = document.getElementById('filterBranch');
 
-  const updateActiveOutletUI = (selectedBranch) => {
-    branches.forEach(b => {
-      const card = document.getElementById(`cardOutlet_${b.replace(/[^a-zA-Z]/g, '')}`);
-      if (card) {
-        if (selectedBranch === b) {
-          card.classList.add('active-outlet-card');
-        } else {
-          card.classList.remove('active-outlet-card');
-        }
-      }
-    });
-
-    if (allBtn) {
-      if (selectedBranch === 'All') {
-        allBtn.classList.add('active');
-      } else {
-        allBtn.classList.remove('active');
-      }
-    }
-
-    if (branchSelect && branchSelect.value !== selectedBranch) {
-      branchSelect.value = selectedBranch;
-    }
-  };
-
   branches.forEach(b => {
-    const card = document.getElementById(`cardOutlet_${b.replace(/[^a-zA-Z]/g, '')}`);
+    const card = document.getElementById(`cardRank_${b.replace(/[^a-zA-Z]/g, '')}`);
     if (card) {
-      card.addEventListener('click', () => {
-        if (currentFilter.branch === b) {
-          // If clicked again, reset to All
-          currentFilter.branch = 'All';
-        } else {
-          currentFilter.branch = b;
-        }
-        updateActiveOutletUI(currentFilter.branch);
-        currentPage = 1;
-        renderTableRows();
-      });
+      if (selectedBranch === b) {
+        card.classList.add('active-rank-card');
+      } else {
+        card.classList.remove('active-rank-card');
+      }
     }
   });
+
+  if (allBtn) {
+    if (selectedBranch === 'All') {
+      allBtn.classList.add('active');
+    } else {
+      allBtn.classList.remove('active');
+    }
+  }
+
+  if (branchSelect && branchSelect.value !== selectedBranch) {
+    branchSelect.value = selectedBranch;
+  }
+}
+
+window.onRankCardClick = function(branch) {
+  if (currentFilter.branch === branch) {
+    currentFilter.branch = 'All';
+  } else {
+    currentFilter.branch = branch;
+  }
+  updateActiveOutletUI(currentFilter.branch);
+  currentPage = 1;
+  renderTableRows();
+};
+
+function initOutletCardsFilter() {
+  const allBtn = document.getElementById('btnFilterAllBranches');
+  const branchSelect = document.getElementById('filterBranch');
 
   if (allBtn) {
     allBtn.addEventListener('click', () => {
@@ -453,7 +519,7 @@ function renderTableRows() {
 
           <div class="pmc-meta-row">
             <span class="pmc-branch-badge">📍 ${p.branch} Outlet</span>
-            <span class="pmc-age-badge">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</span>
+            <span class="pmc-age-badge">${p.age} Yrs • ${p.category || 'Age 8 - 17 Years'}</span>
             ${p.judge_score > 0 ? `<span style="margin-left:auto; font-weight:800; color:var(--gold-200); font-size:11.5px;">Score: ${p.judge_score}/100</span>` : ''}
           </div>
 
@@ -523,7 +589,7 @@ function renderTableRows() {
               <img src="${p.photo_url || 'assets/logo.png'}" alt="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1.5px solid var(--gold-primary); background:#0c1710; flex-shrink:0;">
               <div>
                 <strong style="color:#fff; font-size:14px; display:block;">${displayName}</strong>
-                <div style="font-size:11.5px; color:var(--text-muted);">${p.age} Yrs • ${p.category || 'Age 8 - 18 Years'}</div>
+                <div style="font-size:11.5px; color:var(--text-muted);">${p.age} Yrs • ${p.category || 'Age 8 - 17 Years'}</div>
               </div>
             </div>
           </td>
@@ -1751,7 +1817,7 @@ function openReviewDossier(regId) {
 
             <div style="text-align:left; max-width:240px;">
               <strong style="color:#fff; font-size:15px; display:block;">${escapeHtml(participant.full_name)}</strong>
-              <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Age: ${participant.age} Yrs • ${participant.category || 'Age 8 - 18 Years'}</div>
+              <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">Age: ${participant.age} Yrs • ${participant.category || 'Age 8 - 17 Years'}</div>
               
               <div style="display:flex; flex-direction:column; gap:6px;">
                 <button type="button" class="btn-table-action" style="background:#1d6b43; color:#fff; border:none; padding:5px 12px; border-radius:4px; font-size:11.5px; cursor:pointer; text-align:left;" onclick="document.getElementById('adminDossierPhotoInput').click()">
@@ -1840,7 +1906,7 @@ function openReviewDossier(regId) {
           </div>
           <h3 style="font-size:19px; color:#fff; font-family:var(--font-serif); margin-bottom:2px;">${escapeHtml(participant.full_name)}</h3>
           <p style="color:var(--text-muted); font-size:12.5px; margin-bottom:12px;">
-            ${participant.age} Years • ${participant.category || 'Age 8 - 18 Years'} • Reid &amp; Premium <strong>${participant.branch}</strong> Branch
+            ${participant.age} Years • ${participant.category || 'Age 8 - 17 Years'} • Reid &amp; Premium <strong>${participant.branch}</strong> Branch
           </p>
 
           <table style="width:100%; font-size:12.5px; line-height:1.75;">
@@ -2007,7 +2073,7 @@ function exportParticipantsToCsv() {
     `"${p.registration_id || ''}"`,
     `"${(p.full_name || '').replace(/"/g, '""')}"`,
     p.age || '',
-    `"${p.category || 'Age 8 - 18 Years'}"`,
+    `"${p.category || 'Age 8 - 17 Years'}"`,
     `"${p.branch || ''}"`,
     `"${p.phone || ''}"`,
     `"${p.whatsapp || ''}"`,

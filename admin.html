@@ -148,86 +148,22 @@
       </div>
     </div>
 
-    <!-- 4 Outlets Entry Cards Section (Click any outlet to filter) -->
-    <div class="admin-outlets-section">
-      <div class="outlets-section-header">
+    <!-- 4 Outlets Leaderboard & Dynamic Ranking Section (Click any ranked branch to filter) -->
+    <div class="admin-ranking-section">
+      <div class="ranking-section-header">
         <div>
-          <h3 class="outlets-title">🏢 Reid &amp; Premium Outlets (4 Branches)</h3>
-          <p class="outlets-subtitle">Tap any outlet card below to filter its entries:</p>
+          <div class="ranking-badge-pill">🏆 BRANCH SUBMISSION LEADERBOARD</div>
+          <h3 class="ranking-title">Top Performing Outlets Ranking</h3>
+          <p class="ranking-subtitle">Real-time ranking of total submissions across all 4 Reid &amp; Premium branches. Tap any branch card to filter records:</p>
         </div>
-        <button type="button" id="btnFilterAllBranches" class="btn-outlet-pill active" title="View all entries from all outlets">
+        <button type="button" id="btnFilterAllBranches" class="btn-ranking-all active" title="View all entries from all branches">
           ✨ All Outlets (Show All)
         </button>
       </div>
 
-      <div class="admin-outlets-grid">
-        <!-- 1. Puttur Outlet Card -->
-        <div class="admin-outlet-card" id="cardOutlet_Puttur" data-branch="Puttur" title="Click to view Puttur Outlet entries">
-          <div class="outlet-card-top">
-            <span class="outlet-pin">📍</span>
-            <span class="outlet-name">PUTTUR</span>
-            <span class="outlet-active-tag">Filtered ✓</span>
-          </div>
-          <div class="outlet-card-count">
-            <span id="statBranch_Puttur">0</span>
-            <span class="outlet-card-count-unit">Entries</span>
-          </div>
-          <div class="outlet-card-sub" id="statBranch_Puttur_sub">0 Approved • 0 Pending</div>
-          <div class="outlet-card-footer">
-            <span class="outlet-click-hint">Tap to filter &rarr;</span>
-          </div>
-        </div>
-
-        <!-- 2. Thokkotu Outlet Card -->
-        <div class="admin-outlet-card" id="cardOutlet_Thokkotu" data-branch="Thokkotu" title="Click to view Thokkotu Outlet entries">
-          <div class="outlet-card-top">
-            <span class="outlet-pin">📍</span>
-            <span class="outlet-name">THOKKOTU</span>
-            <span class="outlet-active-tag">Filtered ✓</span>
-          </div>
-          <div class="outlet-card-count">
-            <span id="statBranch_Thokkotu">0</span>
-            <span class="outlet-card-count-unit">Entries</span>
-          </div>
-          <div class="outlet-card-sub" id="statBranch_Thokkotu_sub">0 Approved • 0 Pending</div>
-          <div class="outlet-card-footer">
-            <span class="outlet-click-hint">Tap to filter &rarr;</span>
-          </div>
-        </div>
-
-        <!-- 3. B.C Road Outlet Card -->
-        <div class="admin-outlet-card" id="cardOutlet_BCRoad" data-branch="B.C Road" title="Click to view B.C Road Outlet entries">
-          <div class="outlet-card-top">
-            <span class="outlet-pin">📍</span>
-            <span class="outlet-name">B.C ROAD</span>
-            <span class="outlet-active-tag">Filtered ✓</span>
-          </div>
-          <div class="outlet-card-count">
-            <span id="statBranch_BCRoad">0</span>
-            <span class="outlet-card-count-unit">Entries</span>
-          </div>
-          <div class="outlet-card-sub" id="statBranch_BCRoad_sub">0 Approved • 0 Pending</div>
-          <div class="outlet-card-footer">
-            <span class="outlet-click-hint">Tap to filter &rarr;</span>
-          </div>
-        </div>
-
-        <!-- 4. Sullia Outlet Card -->
-        <div class="admin-outlet-card" id="cardOutlet_Sullia" data-branch="Sullia" title="Click to view Sullia Outlet entries">
-          <div class="outlet-card-top">
-            <span class="outlet-pin">📍</span>
-            <span class="outlet-name">SULLIA</span>
-            <span class="outlet-active-tag">Filtered ✓</span>
-          </div>
-          <div class="outlet-card-count">
-            <span id="statBranch_Sullia">0</span>
-            <span class="outlet-card-count-unit">Entries</span>
-          </div>
-          <div class="outlet-card-sub" id="statBranch_Sullia_sub">0 Approved • 0 Pending</div>
-          <div class="outlet-card-footer">
-            <span class="outlet-click-hint">Tap to filter &rarr;</span>
-          </div>
-        </div>
+      <!-- Container where dynamic ranked cards are rendered in descending order of submissions -->
+      <div class="admin-ranking-grid" id="adminRankingGrid">
+        <!-- Ranked branch cards rendered dynamically by renderStatsCounters in admin.js -->
       </div>
     </div>
 
@@ -259,7 +195,7 @@
 
         <select id="filterCategory" class="filter-select">
           <option value="All">All Categories</option>
-          <option value="Age 8 - 18 Years">Age 8 - 18 Years</option>
+          <option value="Age 8 - 17 Years">Age 8 - 17 Years</option>
         </select>
       </div>
     </div>

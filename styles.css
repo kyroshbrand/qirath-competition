@@ -1400,143 +1400,348 @@ footer {
   flex-wrap: wrap;
 }
 
-/* 4 Outlets Section */
-.admin-outlets-section {
-  margin-bottom: 26px;
+/* 4 Branches Leaderboard & Submission Rankings Section */
+.admin-ranking-section {
+  background: linear-gradient(180deg, rgba(10, 24, 16, 0.7) 0%, rgba(5, 13, 9, 0.85) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
+  margin-bottom: 28px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
 }
-.outlets-section-header {
+.admin-ranking-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gold-gradient);
+}
+.ranking-section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 18px;
 }
-.outlets-title {
-  font-family: var(--font-serif);
-  font-size: 16px;
-  color: var(--gold-100);
+.ranking-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--gold-100);
+  background: rgba(212, 167, 59, 0.15);
+  border: 1px solid rgba(212, 167, 59, 0.35);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: 6px;
+}
+.ranking-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
   margin: 0;
 }
-.outlets-subtitle {
-  font-size: 12px;
+.ranking-subtitle {
+  font-size: 12.5px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 4px;
+  line-height: 1.4;
+  max-width: 680px;
 }
-.btn-outlet-pill {
+.btn-ranking-all {
   background: rgba(212, 167, 59, 0.12);
-  border: 1px solid var(--border-gold);
+  border: 1.5px solid var(--border-gold);
   color: var(--gold-200);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 6px 14px;
+  padding: 8px 18px;
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
-.btn-outlet-pill:hover,
-.btn-outlet-pill.active {
-  background: var(--gold-primary);
+.btn-ranking-all:hover,
+.btn-ranking-all.active {
+  background: var(--gold-gradient);
   color: #060a08;
-  border-color: var(--gold-primary);
-  box-shadow: 0 2px 10px rgba(212, 167, 59, 0.35);
+  border-color: var(--gold-100);
+  box-shadow: 0 4px 16px rgba(212, 167, 59, 0.4);
+  transform: translateY(-1px);
 }
 
-.admin-outlets-grid {
+/* 4 Branches Dynamic Grid */
+.admin-ranking-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
-.admin-outlet-card {
-  background: linear-gradient(145deg, #091a11 0%, #050f0a 100%);
-  border: 1px solid var(--border-subtle);
+
+/* Individual Branch Rank Card */
+.admin-rank-card {
   border-radius: var(--radius-md);
-  padding: 16px 14px;
+  padding: 18px 16px;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-}
-.admin-outlet-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(212, 167, 59, 0.55);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(212, 167, 59, 0.15);
-}
-.admin-outlet-card.active-outlet-card {
-  background: linear-gradient(145deg, #10291c 0%, #081810 100%);
-  border-color: var(--gold-primary);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 20px rgba(212, 167, 59, 0.3);
-}
-.outlet-card-top {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  margin-bottom: 6px;
+  overflow: hidden;
 }
-.outlet-pin {
-  font-size: 13px;
+.admin-rank-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
 }
-.outlet-name {
-  font-family: var(--font-serif);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gold-100);
+
+/* Rank 1: Gold Leader */
+.admin-rank-card.rank-pos-1 {
+  background: radial-gradient(circle at 90% 10%, rgba(212, 167, 59, 0.18), transparent 60%),
+              linear-gradient(145deg, #152c1e 0%, #09170f 100%);
+  border: 1.5px solid rgba(212, 167, 59, 0.65);
+}
+.admin-rank-card.rank-pos-1:hover {
+  border-color: var(--gold-100);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(212, 167, 59, 0.25);
+}
+.admin-rank-card.rank-pos-1 .rank-badge-tag {
+  background: linear-gradient(135deg, #fce085 0%, #d4a73b 100%);
+  color: #060e08;
+  border: 1px solid #ffe999;
+}
+
+/* Rank 2: Silver Runner-Up */
+.admin-rank-card.rank-pos-2 {
+  background: radial-gradient(circle at 90% 10%, rgba(203, 213, 225, 0.15), transparent 60%),
+              linear-gradient(145deg, #102419 0%, #08130d 100%);
+  border: 1.5px solid rgba(203, 213, 225, 0.5);
+}
+.admin-rank-card.rank-pos-2:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(203, 213, 225, 0.2);
+}
+.admin-rank-card.rank-pos-2 .rank-badge-tag {
+  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+  color: #0f172a;
+  border: 1px solid #ffffff;
+}
+
+/* Rank 3: Bronze 3rd Place */
+.admin-rank-card.rank-pos-3 {
+  background: radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.14), transparent 60%),
+              linear-gradient(145deg, #0e2016 0%, #06110a 100%);
+  border: 1.5px solid rgba(217, 119, 6, 0.5);
+}
+.admin-rank-card.rank-pos-3:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.2);
+}
+.admin-rank-card.rank-pos-3 .rank-badge-tag {
+  background: linear-gradient(135deg, #fcd34d 0%, #b45309 100%);
+  color: #fff;
+  border: 1px solid #fde68a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Rank 4: Contender */
+.admin-rank-card.rank-pos-4 {
+  background: radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.12), transparent 60%),
+              linear-gradient(145deg, #0a1b12 0%, #040d07 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+}
+.admin-rank-card.rank-pos-4:hover {
+  border-color: rgba(16, 185, 129, 0.7);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 18px rgba(16, 185, 129, 0.15);
+}
+.admin-rank-card.rank-pos-4 .rank-badge-tag {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  color: #fff;
+  border: 1px solid #6ee7b7;
+}
+
+/* Active Filtered State */
+.admin-rank-card.active-rank-card {
+  outline: 2px solid var(--gold-primary) !important;
+  outline-offset: -1px;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.7), 0 0 28px rgba(212, 167, 59, 0.45) !important;
+}
+
+/* Card Header: Rank Badge & Filtered Tag */
+.rank-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rank-badge-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex: 1;
-  margin-left: 6px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
-.outlet-active-tag {
+.rank-active-pill {
   display: none;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 800;
   background: var(--gold-primary);
-  color: #060a08;
-  padding: 2px 6px;
+  color: #060e09;
+  padding: 2.5px 7px;
   border-radius: 4px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  animation: pulseFiltered 2s infinite;
 }
-.admin-outlet-card.active-outlet-card .outlet-active-tag {
+@keyframes pulseFiltered {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+.admin-rank-card.active-rank-card .rank-active-pill {
   display: inline-block;
 }
-.outlet-card-count {
-  font-family: var(--font-serif);
-  font-size: 26px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.1;
-  margin-bottom: 4px;
-}
-.outlet-card-count-unit {
-  font-size: 12px;
-  color: var(--gold-300);
-  font-weight: 600;
-  margin-left: 4px;
-  font-family: var(--font-sans);
-}
-.outlet-card-sub {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  line-height: 1.3;
+
+/* Branch Name & Outlet Pin */
+.rank-branch-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 8px;
 }
-.outlet-card-footer {
+.rank-pin-icon {
+  font-size: 15px;
+}
+.rank-branch-name {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Total Submissions Metric */
+.rank-metric-box {
+  margin-bottom: 12px;
+}
+.rank-metric-number {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.rank-pos-1 .rank-metric-number {
+  color: #ffe48a;
+  text-shadow: 0 0 16px rgba(212, 167, 59, 0.4);
+}
+.rank-metric-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-left: 6px;
+  font-family: var(--font-sans);
+}
+
+/* Market Share Progress Bar */
+.rank-share-wrapper {
+  margin-bottom: 12px;
+}
+.rank-share-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.rank-share-percent {
+  color: var(--gold-200);
+  font-weight: 800;
+}
+.rank-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.rank-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+.rank-pos-1 .rank-progress-fill {
+  background: linear-gradient(90deg, #d4a73b, #fce085);
+  box-shadow: 0 0 8px rgba(212, 167, 59, 0.6);
+}
+.rank-pos-2 .rank-progress-fill {
+  background: linear-gradient(90deg, #94a3b8, #e2e8f0);
+}
+.rank-pos-3 .rank-progress-fill {
+  background: linear-gradient(90deg, #b45309, #fcd34d);
+}
+.rank-pos-4 .rank-progress-fill {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+/* Sub-statistics Row: Approved & Pending */
+.rank-sub-stats {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rank-stat-approved {
+  color: #4ade80;
+  font-weight: 600;
+}
+.rank-stat-pending {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* Card Bottom Filter Hint */
+.rank-card-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 6px;
+  padding-top: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.outlet-click-hint {
+.rank-filter-hint {
   font-size: 10px;
   color: var(--gold-200);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* View Switcher Bar */
@@ -1784,15 +1989,31 @@ footer {
   .admin-metric-card .count {
     font-size: 24px;
   }
-  .admin-outlets-grid {
+  .admin-ranking-section {
+    padding: 16px 14px;
+    margin-bottom: 20px;
+  }
+  .ranking-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .btn-ranking-all {
+    width: 100%;
+    justify-content: center;
+  }
+  .admin-ranking-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-  .admin-outlet-card {
-    padding: 12px 10px;
+  .admin-rank-card {
+    padding: 14px 12px;
   }
-  .outlet-card-count {
-    font-size: 22px;
+  .rank-metric-number {
+    font-size: 24px;
+  }
+  .rank-branch-name {
+    font-size: 13.5px;
   }
   .table-toolbar {
     flex-direction: column;
@@ -1812,6 +2033,19 @@ footer {
     width: 95vw !important;
     max-height: 92vh !important;
     padding: 16px !important;
+  }
+}
+
+@media (max-width: 540px) {
+  .admin-ranking-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .admin-rank-card {
+    padding: 16px 14px;
+  }
+  .rank-metric-number {
+    font-size: 28px;
   }
 }
 

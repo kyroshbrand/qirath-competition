@@ -982,8 +982,8 @@
 
       <div class="row">
         <div class="f">
-          <label class="t" for="age">Age (8 to 18 only)<u>*</u></label>
-          <input id="age" type="number" inputmode="numeric" min="8" max="18" placeholder="Age (8 - 18 yrs)" required>
+          <label class="t" for="age">Age (8 to 17 only)<u>*</u></label>
+          <input id="age" type="number" inputmode="numeric" min="8" max="17" placeholder="Age (8 - 17 yrs)" required>
           <div class="err" id="e_age"></div>
         </div>
 
@@ -1035,7 +1035,7 @@
       <div class="f">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span class="t" style="margin-bottom:0;">Your Qirath video<u>*</u></span>
-          <span style="font-size:11px; color:var(--mut);">Direct file or link</span>
+          <span style="font-size:11px; color:#d4a73b; font-weight:700; background:rgba(212,167,59,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(212,167,59,0.3);">⏱️ Max 2 Minutes Duration</span>
         </div>
 
         <div class="vid-tabs">
@@ -1047,8 +1047,8 @@
         <div id="wrap_vid_file">
           <label class="file" id="l_video">
             <input id="video" type="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv,.mp3,.m4a,.wav,.aac,.ogg">
-            <b>Tap to choose video / audio</b>
-            <small>Direct upload up to 100 MB</small>
+            <b>Tap to choose recitation video / audio (Max 2 Min)</b>
+            <small>Duration must not exceed 2 minutes • Direct upload up to 100 MB</small>
           </label>
           <div class="prev" id="p_video"></div>
           <div id="vid_warn" style="display:none; color:var(--err); font-size:12px; font-weight:600; margin-top:8px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:10px 12px; line-height:1.5;"></div>
@@ -1061,7 +1061,7 @@
             <button type="button" id="btn_clear_vid_link" style="display:none; padding:8px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#dc2626; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; white-space:nowrap; font-family:var(--sans);" onclick="$('video_link').value=''; this.style.display='none'; refresh();">🗑️ Delete Link</button>
           </div>
           <small style="color:var(--mut); display:block; margin-top:8px; font-size:12px; line-height:1.5;">
-            💡 <strong>Recommended if video exceeds 100MB or for instant upload:</strong> Upload to Google Drive (set to <em>“Anyone with link can view”</em>) or YouTube and paste link here.
+            💡 <strong>Duration Rule:</strong> Video recitation must <strong>not exceed 2 minutes</strong>. If your video is large, upload to Google Drive (set to <em>“Anyone with link can view”</em>) or YouTube and paste the link here.
           </small>
         </div>
       </div>
@@ -1177,6 +1177,8 @@ $("video_link").addEventListener("input", () => {
 // Pre-compression and Background Pre-Upload Tracking
 let activeVideoUpload = null; 
 let precompressedImages = {};
+let videoDurationExceeded = false;
+let videoDurationSec = 0;
 
 // Clear Uploaded File Function
 function clearFile(id) {
@@ -1187,6 +1189,8 @@ function clearFile(id) {
   const label = $("l_" + id);
   if (label) label.classList.remove("done");
   if (id === "video") {
+    videoDurationExceeded = false;
+    videoDurationSec = 0;
     const warn = $("vid_warn");
     if (warn) warn.style.display = "none";
     if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
@@ -1212,6 +1216,8 @@ window.clearFile = clearFile;
     
     // Check oversized video immediately
     if (id === "video") {
+      videoDurationExceeded = false;
+      videoDurationSec = 0;
       if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
         try { activeVideoUpload.abort(); } catch(e) {}
       }
@@ -1247,6 +1253,34 @@ window.clearFile = clearFile;
         el.controls = true;
         el.preload = "metadata";
         el.playsInline = true;
+
+        // Check video duration (Strict rule: Must not exceed 2 minutes / 120s)
+        el.onloadedmetadata = () => {
+          if (el.duration && el.duration > 125) { // 2 minutes (120s) with 5s buffer
+            videoDurationExceeded = true;
+            videoDurationSec = el.duration;
+            const min = Math.floor(el.duration / 60);
+            const sec = Math.floor(el.duration % 60);
+            const warn = $("vid_warn");
+            if (warn) {
+              warn.style.display = "block";
+              warn.innerHTML = `⏱️ <strong>Video Duration Limit Exceeded:</strong> Your selected video is <strong>${min}m ${sec}s</strong> long.<br>Competition rules state recitation <strong>must not exceed 2 minutes</strong>. Please trim your video to under 2 minutes or upload a shorter clip!`;
+            }
+            if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
+              try { activeVideoUpload.abort(); } catch(e) {}
+            }
+            activeVideoUpload = null;
+            const bgBadge = document.getElementById("vid_bg_badge");
+            if (bgBadge) bgBadge.remove();
+            refresh();
+          } else {
+            videoDurationExceeded = false;
+            videoDurationSec = el.duration || 0;
+            const warn = $("vid_warn");
+            if (warn && f.size <= MAX_DIRECT_BYTES) warn.style.display = "none";
+            refresh();
+          }
+        };
       }
       const p = document.createElement("div");
       p.className = "fn";
@@ -1334,12 +1368,12 @@ $("phone").addEventListener("input", () => {
   $("phone").value = $("phone").value.replace(/\D/g, "").replace(/^91(?=\d{10})/, "").slice(0, 10);
 });
 
-// Age input validation
+// Age input validation (8 to 17 years)
 $("age").addEventListener("input", () => {
   const val = +$("age").value;
   const err = $("e_age");
-  if (val && (val < 8 || val > 18)) {
-    err.textContent = "Competition is only open for ages 8 to 18.";
+  if (val && (val < 8 || val > 17)) {
+    err.textContent = "Competition is only open for ages 8 to 17.";
   } else {
     err.textContent = "";
   }
@@ -1399,7 +1433,7 @@ const FIELD_MAP = {
     getContainer: () => $("name").closest(".f")
   },
   age: {
-    label: "Valid Age (8 to 18 years)",
+    label: "Valid Age (8 to 17 years)",
     getElement: () => $("age"),
     getContainer: () => $("age").closest(".f")
   },
@@ -1429,7 +1463,7 @@ const FIELD_MAP = {
     getContainer: () => $("l_aadhaar")
   },
   video: {
-    label: "Qirath Video (Upload file up to 100MB or Google Drive Link)",
+    label: "Qirath Video (Max 2 Minutes • Upload file up to 100MB or Google Drive Link)",
     getElement: () => videoMode === "link" ? $("video_link") : $("video"),
     getContainer: () => $("tab_vid_file").closest(".f")
   },
@@ -1518,17 +1552,17 @@ function showPendingToast(pendingKeys) {
   }, 4500);
 }
 
-// Form state validation (Surah removed; Only one category: Age 8 to 18)
+// Form state validation (Only one category: Age 8 to 17)
 function state() {
   const age = +$("age").value;
   const vidFile = $("video").files[0];
   const isVidValid = videoMode === "link"
     ? $("video_link").value.trim().length >= 8
-    : (!!vidFile && vidFile.size <= MAX_DIRECT_BYTES);
+    : (!!vidFile && vidFile.size <= MAX_DIRECT_BYTES && !videoDurationExceeded);
 
   return {
     name: $("name").value.trim().length >= 2,
-    age: age >= 8 && age <= 18,
+    age: age >= 8 && age <= 17,
     phone: /^[6-9]\d{9}$/.test($("phone").value),
     place: $("place").value.trim().length >= 4,
     branch: !!document.querySelector('input[name=branch]:checked'),
@@ -1547,12 +1581,12 @@ function refresh() {
   const vidFile = $("video").files[0];
   const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
   const age = +$("age").value;
-  const ageInvalid = age && (age < 8 || age > 18);
+  const ageInvalid = age && (age < 8 || age > 17);
 
   const go = $("go");
   const hint = $("hint");
 
-  if (miss.length === 0 && !vidOversized) {
+  if (miss.length === 0 && !vidOversized && !videoDurationExceeded) {
     go.disabled = false;
     go.classList.remove("btn-pending-action");
     go.classList.add("btn-ready-action");
@@ -1568,7 +1602,9 @@ function refresh() {
     go.innerHTML = `SUBMIT ENTRY (${miss.length} PENDING — TAP TO FILL)`;
 
     if (ageInvalid) {
-      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Candidate age must be between 08 and 18 years.</span>`;
+      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Candidate age must be between 08 and 17 years.</span>`;
+    } else if (videoDurationExceeded) {
+      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⏱️ Video duration exceeds 2 minutes. Please choose a clip under 2 minutes.</span>`;
     } else if (vidOversized) {
       hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Video exceeds 100MB. Select clip up to 100MB or switch to Google Drive link.</span>`;
     } else {
@@ -1864,7 +1900,8 @@ $("f").addEventListener("submit", async e => {
   const vidFile = $("video").files[0];
   const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
 
-  if (miss.length > 0 || vidOversized) {
+  if (miss.length > 0 || vidOversized || videoDurationExceeded) {
+    if (videoDurationExceeded && !miss.includes("video")) miss.unshift("video");
     if (vidOversized && !miss.includes("video")) miss.unshift("video");
     scrollToFirstPending(miss);
     return;
@@ -1938,7 +1975,7 @@ $("f").addEventListener("submit", async e => {
     hint.textContent = "⚡ Generating official poster & saving entry…";
 
     const ageNum = parseInt($("age").value, 10);
-    const category = "Age 8 - 18 Years"; // Only one category between 8 and 18
+    const category = "Age 8 - 17 Years"; // Only one category: Ages 8 to 17
 
     // Insert to Supabase Database
     const payload = {
