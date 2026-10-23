@@ -103,7 +103,7 @@ function initFormInteractions() {
   setupFilePicker('waShotInput', 'waShotBox', 'waShotPreview', 'image');
 
   // Input event listeners for validation
-  ['fullName', 'age', 'phone', 'whatsapp', 'address', 'termsAgree'].forEach(id => {
+  ['fullName', 'age', 'phone', 'whatsapp', 'address'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', checkFormValidity);
   });
@@ -169,7 +169,6 @@ function getFormState() {
   const wa = document.getElementById('whatsapp')?.value.trim() || '';
   const address = document.getElementById('address')?.value.trim() || '';
   const branch = document.querySelector('input[name="branch"]:checked')?.value || '';
-  const terms = document.getElementById('termsAgree')?.checked || false;
 
   return {
     name: name.length >= 3,
@@ -177,8 +176,7 @@ function getFormState() {
     phone: /^[6-9]\d{9}$/.test(phone),
     whatsapp: /^[6-9]\d{9}$/.test(wa),
     address: address.length >= 5,
-    branch: !!branch,
-    terms: terms
+    branch: !!branch
   };
 }
 

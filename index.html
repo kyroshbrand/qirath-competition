@@ -1155,12 +1155,7 @@
         </div>
       </div>
 
-      <div class="chk">
-        <input type="checkbox" id="ok" required>
-        <label for="ok">I confirm the details are correct and agree to Reid &amp; Premium using my recitation video and details for this competition.</label>
-      </div>
-
-      <div style="height:12px"></div>
+      <div style="height:8px"></div>
 
       <button id="go" type="submit" class="btn-pending-action">Submit entry</button>
       <div class="hint" id="hint">Complete required fields to submit</div>
@@ -1390,11 +1385,6 @@ const FIELD_MAP = {
     label: "Participant Face Photo / Portrait Image",
     getElement: () => $("photo"),
     getContainer: () => $("l_photo")
-  },
-  ok: {
-    label: "Competition Agreement Checkbox",
-    getElement: () => $("ok"),
-    getContainer: () => $("ok").closest(".chk")
   }
 };
 
@@ -1475,8 +1465,7 @@ function state() {
     phone: /^[6-9]\d{9}$/.test($("phone").value),
     place: $("place").value.trim().length >= 4,
     branch: !!document.querySelector('input[name=branch]:checked'),
-    photo: !!$("photo").files[0],
-    ok: $("ok").checked
+    photo: !!$("photo").files[0]
   };
 }
 
@@ -1513,7 +1502,7 @@ function refresh() {
   }
 }
 
-["name", "age", "phone", "place", "ok"].forEach(i => $(i).addEventListener("input", refresh));
+["name", "age", "phone", "place"].forEach(i => $(i).addEventListener("input", refresh));
 $("br").addEventListener("change", refresh);
 refresh();
 
