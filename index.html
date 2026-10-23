@@ -77,28 +77,115 @@
       background: linear-gradient(to bottom, rgba(6, 10, 8, 0.35) 0%, rgba(6, 10, 8, 0) 35%, rgba(6, 10, 8, 0.8) 75%, var(--black) 100%);
     }
 
-    .vid-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 12px;
+    /* WhatsApp Video Submission Card */
+    .wa-video-card {
+      background: linear-gradient(135deg, #0a1710 0%, #112218 100%);
+      border: 1.5px solid rgba(37, 211, 102, 0.4);
+      border-radius: 14px;
+      padding: 16px;
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
     }
-    .vid-tab {
-      padding: 11px 8px;
-      border: 1.5px solid var(--line);
-      background: #faf8f4;
-      color: var(--mut);
-      font: 600 12.5px var(--sans);
-      border-radius: 8px;
+    .wa-video-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #d1ccbe;
+    }
+    .step-item strong {
+      color: #fff;
+    }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #25d366;
+      color: #05140b;
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .btn-wa-video-redirect {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
+      box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45);
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      text-align: left;
+      font-family: var(--sans);
     }
-    .vid-tab.active {
-      background: var(--black);
-      color: var(--gold2);
-      border-color: var(--gold);
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    .btn-wa-video-redirect:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(37, 211, 102, 0.65);
+    }
+    .btn-wa-video-redirect:active {
+      transform: translateY(1px);
+    }
+    .wa-redirect-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .wa-redirect-text {
+      flex: 1;
+    }
+    .wa-redirect-title {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .wa-redirect-num {
+      display: block;
+      font-size: 11.5px;
+      opacity: 0.92;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .wa-redirect-badge {
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .wa-status-box {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: rgba(37, 211, 102, 0.15);
+      border: 1px solid rgba(37, 211, 102, 0.5);
+      color: #92f7b8;
+      font-size: 12.5px;
+      line-height: 1.45;
     }
 
     .logo-container {
@@ -369,8 +456,8 @@
       background: #141c16;
       border: 1px solid #28362c;
       border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
     }
     .sub:last-child { margin-bottom: 0; }
     .sub .t {
@@ -386,25 +473,11 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #fff;
-      margin-bottom: 12px;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.2s;
     }
-    .go2:hover { opacity: 0.92; }
+    .go2:hover { opacity: 0.95; transform: translateY(-1px); }
     .ig { background: linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); }
     .wa { background: #1fa855; }
-
-    .sub .file {
-      background: #0d1510;
-      border-color: #7a6430;
-      color: #fff;
-    }
-    .sub .file b { color: #fff; }
-    .sub .file small, .sub .fn { color: #a9a396; }
-    .sub .file.done {
-      background: #0f2417;
-      border-color: #3fb26a;
-    }
-    .sub .fn { color: #3fb26a; }
 
     /* Checkbox & Submit */
     .chk {
@@ -1010,7 +1083,7 @@
         </div>
       </div>
 
-      <div class="sh">Documents, Photo &amp; video</div>
+      <div class="sh">Participant Photo &amp; Video</div>
 
       <div class="f">
         <span class="t">Participant Face Photo / Portrait Image<u>*</u></span>
@@ -1022,85 +1095,69 @@
         <div class="prev" id="p_photo"></div>
       </div>
 
-      <div class="f">
-        <span class="t">Aadhaar card image<u>*</u></span>
-        <label class="file" id="l_aadhaar">
-          <input id="aadhaar" type="file" accept="image/*,.pdf" required>
-          <b>Tap to upload Aadhaar photo</b>
-          <small>Clear photo of the card for residency verification</small>
-        </label>
-        <div class="prev" id="p_aadhaar"></div>
-      </div>
-
+      <!-- WhatsApp Video Submission -->
       <div class="f">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span class="t" style="margin-bottom:0;">Your Qirath video<u>*</u></span>
-          <span style="font-size:11px; color:#d4a73b; font-weight:700; background:rgba(212,167,59,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(212,167,59,0.3);">⏱️ Max 2 Minutes Duration</span>
+          <span class="t" style="margin-bottom:0;">Send Recitation Video on WhatsApp<u>*</u></span>
+          <span style="font-size:11px; color:#25d366; font-weight:700; background:rgba(37,211,102,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(37,211,102,0.3);">⏱️ Max 2 Mins Video</span>
         </div>
 
-        <div class="vid-tabs">
-          <button type="button" id="tab_vid_file" class="vid-tab active">📁 Upload Video File</button>
-          <button type="button" id="tab_vid_link" class="vid-tab">🔗 Google Drive / YouTube Link</button>
-        </div>
-
-        <!-- Mode 1: Direct File Upload -->
-        <div id="wrap_vid_file">
-          <label class="file" id="l_video">
-            <input id="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.3gp,.3g2,.wmv,.flv,.mpg,.mpeg,.ts,.mts,.m2ts,.ogv">
-            <b>Tap to choose recitation video (Max 2 Min)</b>
-            <small>Duration must not exceed 2 minutes • Direct upload up to 100 MB</small>
-          </label>
-          <div class="prev" id="p_video"></div>
-          <div id="vid_warn" style="display:none; color:var(--err); font-size:12px; font-weight:600; margin-top:8px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:10px 12px; line-height:1.5;"></div>
-        </div>
-
-        <!-- Mode 2: Google Drive / YouTube Link -->
-        <div id="wrap_vid_link" style="display:none;">
-          <div style="display:flex; gap:8px;">
-            <input id="video_link" type="text" placeholder="https://drive.google.com/... or YouTube link" style="flex:1;">
-            <button type="button" id="btn_clear_vid_link" style="display:none; padding:8px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#dc2626; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; white-space:nowrap; font-family:var(--sans);" onclick="$('video_link').value=''; this.style.display='none'; refresh();">🗑️ Delete Link</button>
+        <div class="wa-video-card">
+          <div class="wa-video-steps">
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <span>Tap <strong>“Send Video in WhatsApp”</strong> below to open chat with <strong>9632530219</strong>.</span>
+            </div>
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <span>Your candidate details will be auto-filled in the message. Attach &amp; send your recitation video (Max 2 Min).</span>
+            </div>
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <span>After sending on WhatsApp, return here and tap <strong>Submit Entry</strong> below!</span>
+            </div>
           </div>
-          <small style="color:var(--mut); display:block; margin-top:8px; font-size:12px; line-height:1.5;">
-            💡 <strong>Duration Rule:</strong> Video recitation must <strong>not exceed 2 minutes</strong>. If your video is large, upload to Google Drive (set to <em>“Anyone with link can view”</em>) or YouTube and paste the link here.
-          </small>
+
+          <button type="button" id="btnSendWhatsAppVideo" class="btn-wa-video-redirect">
+            <div class="wa-redirect-icon">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm0 18.15c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.14.82.84-3.06-.2-.31a8.196 8.196 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.84-.86 2.05 0 1.21.88 2.38 1.01 2.55.12.17 1.74 2.66 4.21 3.73.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z"/>
+              </svg>
+            </div>
+            <div class="wa-redirect-text">
+              <span class="wa-redirect-title">SEND VIDEO IN WHATSAPP</span>
+              <span class="wa-redirect-num">📲 Official WhatsApp: 9632530219</span>
+            </div>
+            <span class="wa-redirect-badge">CLICK TO SEND ↗</span>
+          </button>
+
+          <div id="wa_status_note" class="wa-status-box" style="display:none;">
+            ✓ WhatsApp opened (+91 9632530219)! Send your video clip in the WhatsApp chat, then click <strong>Submit Entry</strong> below to finalize your registration.
+          </div>
         </div>
       </div>
 
-      <!-- Follow & Unlock Section -->
+      <!-- Follow Channels (To know results join these two) -->
       <div class="sec">
-        <h3>🔒 Follow &amp; unlock</h3>
-        <p>Follow both pages, then upload a screenshot of each to enable Submit.</p>
+        <h3>📢 To know results, join these two</h3>
+        <p>Follow our Instagram and join our WhatsApp channel to get results, announcements, and updates.</p>
 
-        <div class="sub">
-          <span class="t">Instagram<u>*</u></span>
+        <div class="sub" style="margin-bottom:12px;">
           <a class="go2 ig" href="https://www.instagram.com/reid_and_premium?vrfl=MTNqd2Qwb25mb2Fidg%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer">
-            Click here to follow on Instagram
+            📸 Follow Reid &amp; Premium on Instagram
           </a>
-          <label class="file" id="l_igshot">
-            <input id="igshot" type="file" accept="image/*" required>
-            <b>Upload Instagram screenshot</b>
-            <small>Screenshot showing “Following”</small>
-          </label>
-          <div class="prev" id="p_igshot"></div>
         </div>
 
-        <div class="sub">
-          <span class="t">WhatsApp channel<u>*</u></span>
+        <div class="sub" style="margin-bottom:0;">
           <a class="go2 wa" href="https://whatsapp.com/channel/0029VbE9UQV5kg72cGyOMm3T" target="_blank" rel="noopener noreferrer">
-            Click here to join WhatsApp channel
+            💬 Join Official WhatsApp Channel
           </a>
-          <label class="file" id="l_washot">
-            <input id="washot" type="file" accept="image/*" required>
-            <b>Upload WhatsApp screenshot</b>
-            <small>Screenshot showing “Following” / “Joined”</small>
-          </label>
-          <div class="prev" id="p_washot"></div>
         </div>
       </div>
 
       <div class="chk">
         <input type="checkbox" id="ok" required>
-        <label for="ok">I confirm the details are correct and agree to Reid &amp; Premium using my video and documents only for this competition.</label>
+        <label for="ok">I confirm the details are correct and agree to Reid &amp; Premium using my recitation video and details for this competition.</label>
       </div>
 
       <div style="height:12px"></div>
@@ -1143,42 +1200,49 @@ $("br").innerHTML = BRANCHES.map(b => `
 `).join("");
 
 const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
-const FILES = { photo: "img", aadhaar: "img", video: "vid", igshot: "img", washot: "img" };
-const MAX_DIRECT_BYTES = 100 * 1024 * 1024; // 100MB direct upload limit
+const FILES = { photo: "img" };
 
-let videoMode = 'file'; // 'file' or 'link'
 let activeParticipantPhotoBlob = null;
-
-// Video Mode Switcher
-$("tab_vid_file").addEventListener("click", () => {
-  videoMode = "file";
-  $("tab_vid_file").classList.add("active");
-  $("tab_vid_link").classList.remove("active");
-  $("wrap_vid_file").style.display = "block";
-  $("wrap_vid_link").style.display = "none";
-  refresh();
-});
-
-$("tab_vid_link").addEventListener("click", () => {
-  videoMode = "link";
-  $("tab_vid_link").classList.add("active");
-  $("tab_vid_file").classList.remove("active");
-  $("wrap_vid_link").style.display = "block";
-  $("wrap_vid_file").style.display = "none";
-  refresh();
-});
-
-$("video_link").addEventListener("input", () => {
-  const btn = $("btn_clear_vid_link");
-  if (btn) btn.style.display = $("video_link").value.trim() ? "inline-flex" : "none";
-  refresh();
-});
-
-// Pre-compression and Background Pre-Upload Tracking
-let activeVideoUpload = null; 
 let precompressedImages = {};
-let videoDurationExceeded = false;
-let videoDurationSec = 0;
+let waVideoOpened = false;
+
+// Open WhatsApp with all candidate details pre-filled to send video
+function openWhatsAppVideoSubmission() {
+  const name = $("name").value.trim() || "(Name not entered yet)";
+  const age = $("age").value.trim() || "(Age not entered yet)";
+  const phone = $("phone").value.trim() || "(Phone not entered yet)";
+  const place = $("place").value.trim() || "(Address not entered yet)";
+  const branchEl = document.querySelector('input[name=branch]:checked');
+  const branch = branchEl ? branchEl.value : "(Branch not selected yet)";
+
+  const msg = 
+`🎙️ *ALL KARNATAKA QIRATH COMPETITION 2026*
+Presented by Reid & Premium Groom Studio
+
+*Candidate Registration Details:*
+👤 *Name:* ${name}
+🎂 *Age:* ${age} Years
+📞 *Phone:* +91 ${phone}
+📍 *Address:* ${place}
+🏢 *Nearest Branch:* Reid & Premium ${branch} Branch
+
+------------------------------------
+🎥 *Qirath Recitation Video:*
+(Attaching my 2-Minute Recitation Video below)
+------------------------------------`;
+
+  const waUrl = `https://wa.me/919632530219?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+
+  waVideoOpened = true;
+  const note = $("wa_status_note");
+  if (note) {
+    note.style.display = "block";
+    note.innerHTML = `✓ WhatsApp opened (+91 9632530219)! Send your video clip in the WhatsApp chat, then click <strong>Submit Entry</strong> below to finalize your registration.`;
+  }
+}
+
+$("btnSendWhatsAppVideo").addEventListener("click", openWhatsAppVideoSubmission);
 
 // Clear Uploaded File Function
 function clearFile(id) {
@@ -1188,16 +1252,6 @@ function clearFile(id) {
   if (box) box.innerHTML = "";
   const label = $("l_" + id);
   if (label) label.classList.remove("done");
-  if (id === "video") {
-    videoDurationExceeded = false;
-    videoDurationSec = 0;
-    const warn = $("vid_warn");
-    if (warn) warn.style.display = "none";
-    if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
-      try { activeVideoUpload.abort(); } catch(e) {}
-    }
-    activeVideoUpload = null;
-  }
   if (id === "photo") {
     activeParticipantPhotoBlob = null;
   }
@@ -1206,168 +1260,38 @@ function clearFile(id) {
 }
 window.clearFile = clearFile;
 
-// Instant File Previews & Background Pre-Upload
-["photo", "aadhaar", "video", "igshot", "washot"].forEach(id => {
+// Instant File Preview & Pre-Compression for Face Photo
+["photo"].forEach(id => {
   $(id).addEventListener("change", () => {
     const f = $(id).files[0], box = $("p_" + id);
     box.innerHTML = "";
     const label = $("l_" + id);
     if (label) label.classList.toggle("done", !!f);
-    
-    // Check oversized video immediately and reject audio-only files
-    if (id === "video") {
-      videoDurationExceeded = false;
-      videoDurationSec = 0;
-      if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
-        try { activeVideoUpload.abort(); } catch(e) {}
-      }
-      activeVideoUpload = null;
-
-      // Reject audio-only files
-      if (f && (f.type.startsWith("audio/") || /\.(mp3|m4a|wav|aac|ogg|wma|m4r|opus|flac)$/i.test(f.name))) {
-        clearFile("video");
-        const warn = $("vid_warn");
-        if (warn) {
-          warn.style.display = "block";
-          warn.innerHTML = "⚠️ <strong>Only Video files are permitted:</strong> Audio recordings are not accepted for this competition. Please select a video file.";
-        }
-        return;
-      }
-
-      const warn = $("vid_warn");
-      if (f && f.size > MAX_DIRECT_BYTES) {
-        const mb = (f.size / (1024 * 1024)).toFixed(1);
-        warn.style.display = "block";
-        warn.innerHTML = `⚠️ This video file is <strong>${mb} MB</strong>, which exceeds the direct upload limit (100 MB).<br>Please select a clip up to 100 MB, or click the <strong>Google Drive / YouTube Link</strong> tab above to paste your link!`;
-      } else {
-        warn.style.display = "none";
-      }
-    }
 
     if (f) {
-      // Pre-compress images immediately in the background
-      if (id !== "video") {
-        compressImage(f).then(comp => {
-          precompressedImages[id] = comp;
-        });
-      }
+      compressImage(f).then(comp => {
+        precompressedImages[id] = comp;
+      });
 
       const u = URL.createObjectURL(f);
-      let el;
-      if (id !== "video") {
-        el = document.createElement("img");
-        el.src = u;
-      } else {
-        el = document.createElement("video");
-        el.src = u;
-        el.controls = true;
-        el.preload = "metadata";
-        el.playsInline = true;
+      const el = document.createElement("img");
+      el.src = u;
 
-        // Check video duration (Strict rule: Must not exceed 2 minutes / 120s)
-        el.onloadedmetadata = () => {
-          if (el.duration && el.duration > 125) { // 2 minutes (120s) with 5s buffer
-            videoDurationExceeded = true;
-            videoDurationSec = el.duration;
-            const min = Math.floor(el.duration / 60);
-            const sec = Math.floor(el.duration % 60);
-            const warn = $("vid_warn");
-            if (warn) {
-              warn.style.display = "block";
-              warn.innerHTML = `⏱️ <strong>Video Duration Limit Exceeded:</strong> Your selected video is <strong>${min}m ${sec}s</strong> long.<br>Competition rules state recitation <strong>must not exceed 2 minutes</strong>. Please trim your video to under 2 minutes or upload a shorter clip!`;
-            }
-            if (activeVideoUpload && typeof activeVideoUpload.abort === "function") {
-              try { activeVideoUpload.abort(); } catch(e) {}
-            }
-            activeVideoUpload = null;
-            const bgBadge = document.getElementById("vid_bg_badge");
-            if (bgBadge) bgBadge.remove();
-            refresh();
-          } else {
-            videoDurationExceeded = false;
-            videoDurationSec = el.duration || 0;
-            const warn = $("vid_warn");
-            if (warn && f.size <= MAX_DIRECT_BYTES) warn.style.display = "none";
-            refresh();
-          }
-        };
-      }
       const p = document.createElement("div");
       p.className = "fn";
       p.textContent = "✓ " + f.name + " (" + size(f.size) + ")";
 
-      // Delete / Remove Uploaded File Button
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "btn-delete-upload";
-      delBtn.innerHTML = `🗑️ Delete / Remove Uploaded File`;
-      delBtn.title = "Delete this uploaded file";
+      delBtn.innerHTML = `🗑️ Delete / Remove Uploaded Photo`;
+      delBtn.title = "Delete this uploaded photo";
       delBtn.onclick = (e) => {
         e.stopPropagation();
         clearFile(id);
       };
 
       box.append(el, p, delBtn);
-
-      // Start instant high-speed background pre-upload for video
-      if (id === "video" && f.size <= MAX_DIRECT_BYTES) {
-        const badge = document.createElement("div");
-        badge.id = "vid_bg_badge";
-        badge.className = "upload-badge";
-        badge.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span>⚡ <strong>Uploading in background…</strong> <span id="vid_bg_txt">0%</span></span>
-            <span style="font-size:10.5px; opacity:0.8;">${size(f.size)}</span>
-          </div>
-          <div class="upload-mini-bar"><div id="vid_bg_fill" style="width:0%"></div></div>
-          <small style="opacity:0.75; font-size:10px; margin-top:2px;">Pre-uploading now so your final submit will be instantaneous!</small>
-        `;
-        box.append(badge);
-
-        const onProgress = (pct, loaded, total) => {
-          const txt = document.getElementById("vid_bg_txt");
-          const fill = document.getElementById("vid_bg_fill");
-          if (txt) txt.textContent = `${pct}% (${size(loaded)} / ${size(total)})`;
-          if (fill) fill.style.width = `${pct}%`;
-          if (pct >= 100) {
-            const b = document.getElementById("vid_bg_badge");
-            if (b) {
-              b.className = "upload-badge ready";
-              b.innerHTML = `✓ Recitation video 100% uploaded & ready (${size(total)}) — Final submit will be instant!`;
-            }
-          }
-        };
-
-        const tempFolder = `AKQC-2026-${Date.now().toString().slice(-5)}`;
-        let uploadHandle;
-        if (typeof startUploadToStorage === 'function') {
-          uploadHandle = startUploadToStorage('qirath-videos', f, tempFolder, onProgress);
-        } else {
-          uploadHandle = {
-            promise: uploadToStorage('qirath-videos', f, tempFolder, onProgress),
-            abort: () => {}
-          };
-        }
-
-        const uploadObj = {
-          file: f,
-          promise: uploadHandle.promise,
-          abort: uploadHandle.abort,
-          isDone: false,
-          url: null
-        };
-
-        uploadHandle.promise.then(url => {
-          uploadObj.isDone = true;
-          uploadObj.url = url;
-        }).catch(err => {
-          if (err.message !== "Upload aborted by user") {
-            console.warn("Background upload error, will retry on submit:", err);
-          }
-        });
-
-        activeVideoUpload = uploadObj;
-      }
     }
     refresh();
   });
@@ -1467,26 +1391,6 @@ const FIELD_MAP = {
     getElement: () => $("photo"),
     getContainer: () => $("l_photo")
   },
-  aadhaar: {
-    label: "Aadhaar Card Document",
-    getElement: () => $("aadhaar"),
-    getContainer: () => $("l_aadhaar")
-  },
-  video: {
-    label: "Qirath Video (Max 2 Minutes • Upload file up to 100MB or Google Drive Link)",
-    getElement: () => videoMode === "link" ? $("video_link") : $("video"),
-    getContainer: () => $("tab_vid_file").closest(".f")
-  },
-  igshot: {
-    label: "Instagram Follow Screenshot",
-    getElement: () => $("igshot"),
-    getContainer: () => $("l_igshot")
-  },
-  washot: {
-    label: "WhatsApp Channel Screenshot",
-    getElement: () => $("washot"),
-    getContainer: () => $("l_washot")
-  },
   ok: {
     label: "Competition Agreement Checkbox",
     getElement: () => $("ok"),
@@ -1562,14 +1466,9 @@ function showPendingToast(pendingKeys) {
   }, 4500);
 }
 
-// Form state validation (Only one category: Age 8 to 17)
+// Form state validation (Category: Age 8 to 17)
 function state() {
   const age = +$("age").value;
-  const vidFile = $("video").files[0];
-  const isVidValid = videoMode === "link"
-    ? $("video_link").value.trim().length >= 8
-    : (!!vidFile && vidFile.size <= MAX_DIRECT_BYTES && !videoDurationExceeded);
-
   return {
     name: $("name").value.trim().length >= 2,
     age: age >= 8 && age <= 17,
@@ -1577,10 +1476,6 @@ function state() {
     place: $("place").value.trim().length >= 4,
     branch: !!document.querySelector('input[name=branch]:checked'),
     photo: !!$("photo").files[0],
-    aadhaar: !!$("aadhaar").files[0],
-    video: isVidValid,
-    igshot: !!$("igshot").files[0],
-    washot: !!$("washot").files[0],
     ok: $("ok").checked
   };
 }
@@ -1588,20 +1483,18 @@ function state() {
 function refresh() {
   const s = state();
   const miss = Object.keys(s).filter(k => !s[k]);
-  const vidFile = $("video").files[0];
-  const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
   const age = +$("age").value;
   const ageInvalid = age && (age < 8 || age > 17);
 
   const go = $("go");
   const hint = $("hint");
 
-  if (miss.length === 0 && !vidOversized && !videoDurationExceeded) {
+  if (miss.length === 0) {
     go.disabled = false;
     go.classList.remove("btn-pending-action");
     go.classList.add("btn-ready-action");
     go.innerHTML = "✓ SUBMIT OFFICIAL ENTRY";
-    hint.innerHTML = `<span style="color:#16a34a; font-weight:700;">🟢 All requirements completed – Tap Submit to register!</span>`;
+    hint.innerHTML = `<span style="color:#16a34a; font-weight:700;">🟢 All required details filled – Tap Submit to register!</span>`;
   } else {
     // Keep button clickable so tapping it automatically announces and scrolls to pending field
     go.disabled = false;
@@ -1613,10 +1506,6 @@ function refresh() {
 
     if (ageInvalid) {
       hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Candidate age must be between 08 and 17 years.</span>`;
-    } else if (videoDurationExceeded) {
-      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⏱️ Video duration exceeds 2 minutes. Please choose a clip under 2 minutes.</span>`;
-    } else if (vidOversized) {
-      hint.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ Video exceeds 100MB. Select clip up to 100MB or switch to Google Drive link.</span>`;
     } else {
       const shortName = firstMeta.label.split(" (")[0];
       hint.innerHTML = `⚠️ Next to fill: <strong style="color:#d97706; text-decoration:underline; cursor:pointer;" onclick="scrollToFirstPending(['${miss[0]}'])">${shortName}</strong> (tap submit to auto-scroll)`;
@@ -1902,19 +1791,28 @@ async function generatePosterBlob(details, photoImgElement, customConfig = null)
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
-// Form Submit with Parallel Uploads & Instant Poster Generation
+// Form Submit with Fast Single-Image Upload & Instant Poster Generation
 $("f").addEventListener("submit", async e => {
   e.preventDefault();
   const s = state();
   const miss = Object.keys(s).filter(k => !s[k]);
-  const vidFile = $("video").files[0];
-  const vidOversized = videoMode === "file" && vidFile && vidFile.size > MAX_DIRECT_BYTES;
 
-  if (miss.length > 0 || vidOversized || videoDurationExceeded) {
-    if (videoDurationExceeded && !miss.includes("video")) miss.unshift("video");
-    if (vidOversized && !miss.includes("video")) miss.unshift("video");
+  if (miss.length > 0) {
     scrollToFirstPending(miss);
     return;
+  }
+
+  // Friendly check if they opened WhatsApp to send video
+  if (!waVideoOpened) {
+    const confirmSend = confirm(
+      "Have you sent your Qirath recitation video to WhatsApp (9632530219)?\n\n" +
+      "• Click OK if you have already sent it (or will send it now).\n" +
+      "• Click CANCEL to open WhatsApp now with your details auto-filled!"
+    );
+    if (!confirmSend) {
+      openWhatsAppVideoSubmission();
+      return;
+    }
   }
 
   const br = document.querySelector('input[name=branch]:checked');
@@ -1924,65 +1822,23 @@ $("f").addEventListener("submit", async e => {
   bar.style.display = "block";
   go.disabled = true;
   hint.textContent = "⚡ Fast submitting your official entry…";
-  fill.style.width = "30%";
+  fill.style.width = "40%";
 
   // Collision-free Registration ID for 1000+ candidates
   const uniqueSuffix = Date.now().toString().slice(-5) + Math.floor(100 + Math.random() * 900);
   const regId = `AKQC-2026-${uniqueSuffix}`;
 
   try {
-    // 1. Get precompressed images or compress concurrently
-    const [compPhoto, compAadhaar, compIg, compWa] = await Promise.all([
-      precompressedImages['photo'] || compressImage($("photo").files[0]),
-      precompressedImages['aadhaar'] || compressImage($("aadhaar").files[0]),
-      precompressedImages['igshot'] || compressImage($("igshot").files[0]),
-      precompressedImages['washot'] || compressImage($("washot").files[0])
-    ]);
+    // 1. Get precompressed photo or compress
+    const compPhoto = precompressedImages['photo'] || await compressImage($("photo").files[0]);
 
-    fill.style.width = "50%";
-    hint.textContent = "⚡ Uploading photo, verified documents & video concurrently…";
+    fill.style.width = "70%";
+    hint.textContent = "⚡ Uploading photo & generating official poster…";
 
-    // 2. Video Upload Promise (Instant if pre-uploaded in background)
-    let videoPromise;
-    if (videoMode === "link") {
-      videoPromise = Promise.resolve($("video_link").value.trim());
-    } else if (activeVideoUpload && activeVideoUpload.isDone && activeVideoUpload.url) {
-      // PRE-UPLOAD WAS ALREADY 100% COMPLETED IN BACKGROUND! ZERO WAIT!
-      videoPromise = Promise.resolve(activeVideoUpload.url);
-    } else if (activeVideoUpload && activeVideoUpload.promise) {
-      // Background upload is currently in flight! Connect to it!
-      videoPromise = activeVideoUpload.promise;
-    } else {
-      // Start upload now with live progress tracking
-      videoPromise = uploadToStorage('qirath-videos', $("video").files[0], regId, (pct, loaded, total) => {
-        hint.textContent = `⚡ Uploading recitation video: ${pct}% (${size(loaded)} / ${size(total)})…`;
-        fill.style.width = `${Math.min(95, 50 + Math.round(pct * 0.45))}%`;
-      });
-    }
+    const photoUrl = await uploadToStorage('aadhaar-cards', compPhoto, `${regId}_photo`);
 
-    // Connect progress watcher if background upload is currently in flight
-    let pollInterval = null;
-    if (videoMode === "file" && activeVideoUpload && !activeVideoUpload.isDone) {
-      pollInterval = setInterval(() => {
-        const txt = document.getElementById("vid_bg_txt");
-        if (txt && txt.textContent) {
-          hint.textContent = `⚡ Uploading recitation video: ${txt.textContent}…`;
-        }
-      }, 250);
-      videoPromise.finally(() => { if (pollInterval) clearInterval(pollInterval); });
-    }
-
-    // 3. ALL UPLOADS (Photo, Aadhaar, IG Screenshot, WA Screenshot, Video) RUN PARALLEL IN CONCURRENT STREAMS!
-    const [photoUrl, aadhaarUrl, igUrl, waUrl, videoUrl] = await Promise.all([
-      uploadToStorage('aadhaar-cards', compPhoto, `${regId}_photo`),
-      uploadToStorage('aadhaar-cards', compAadhaar, regId),
-      uploadToStorage('follow-proofs', compIg, regId),
-      uploadToStorage('follow-proofs', compWa, regId),
-      videoPromise
-    ]);
-
-    fill.style.width = "92%";
-    hint.textContent = "⚡ Generating official poster & saving entry…";
+    fill.style.width = "90%";
+    hint.textContent = "⚡ Finalizing official entry…";
 
     const ageNum = parseInt($("age").value, 10);
     const category = "Age 8 - 17 Years"; // Only one category: Ages 8 to 17
@@ -1999,10 +1855,10 @@ $("f").addEventListener("submit", async e => {
       branch: br.value,
       surah_recited: "",
       photo_url: photoUrl,
-      aadhaar_url: aadhaarUrl,
-      video_url: videoUrl,
-      ig_screenshot_url: igUrl,
-      wa_screenshot_url: waUrl,
+      aadhaar_url: null,
+      video_url: "Submitted via WhatsApp (+91 9632530219)",
+      ig_screenshot_url: null,
+      wa_screenshot_url: null,
       status: "Pending Review",
       judge_score: 0,
       judge_notes: "",
@@ -2065,6 +1921,19 @@ $("f").addEventListener("submit", async e => {
             <span class="csb-lbl">BRANCH</span>
             <strong class="csb-val">${saved.branch} Branch</strong>
           </div>
+        </div>
+
+        <!-- WhatsApp Video Confirmation Box -->
+        <div style="background:rgba(37,211,102,0.12); border:1.5px solid #25D366; border-radius:12px; padding:13px 16px; margin:14px auto 16px; max-width:440px; text-align:left;">
+          <div style="display:flex; align-items:center; gap:8px; color:#128C7E; font-weight:800; font-size:12px; letter-spacing:0.05em; text-transform:uppercase;">
+            <span>📲 Recitation Video Confirmation</span>
+          </div>
+          <p style="font-size:12.5px; color:#223328; margin:6px 0 10px; line-height:1.45;">
+            Recitation videos are received on WhatsApp <strong>9632530219</strong>. If you haven't sent your 2-minute video yet, tap below to send it now with your Registration ID (<strong>${saved.registration_id}</strong>)!
+          </p>
+          <a href="https://wa.me/919632530219?text=${encodeURIComponent(`🎙️ ALL KARNATAKA QIRATH COMPETITION 2026\nRegistration ID: ${saved.registration_id}\nCandidate: ${saved.full_name}\nBranch: ${saved.branch}\n\nAttaching recitation video (Max 2 Mins) below:`)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#25D366; color:#fff; text-decoration:none; font-weight:700; font-size:12.5px; padding:9px 18px; border-radius:24px; box-shadow:0 3px 12px rgba(37,211,102,0.45);">
+            💬 Open WhatsApp to Send Video (+91 9632530219)
+          </a>
         </div>
 
         <!-- 3 High-Energy Action Buttons ("High Eager to Click") -->

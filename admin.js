@@ -536,7 +536,14 @@ function renderTableRows() {
           </div>
 
           <!-- Recitation Video Box -->
-          ${p.video_url ? `
+          ${p.video_url && p.video_url.includes('WhatsApp') ? `
+            <div class="pmc-video-box">
+              <span style="color:#25d366; font-weight:600;">📱 Recitation Video:</span>
+              <a href="https://wa.me/${(p.whatsapp || p.phone || '').replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" style="color:#25d366; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                💬 WhatsApp (9632530219) &rarr;
+              </a>
+            </div>
+          ` : p.video_url ? `
             <div class="pmc-video-box">
               <span style="color:var(--gold-200); font-weight:600;">🎥 Recitation Video:</span>
               <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-primary); text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
@@ -604,7 +611,11 @@ function renderTableRows() {
             </button>
           </td>
           <td>
-            ${p.video_url ? `
+            ${p.video_url && p.video_url.includes('WhatsApp') ? `
+              <a href="https://wa.me/${(p.whatsapp || p.phone || '').replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" style="color:#25d366; font-weight:700; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                📱 WhatsApp Video
+              </a>
+            ` : p.video_url ? `
               <a href="${p.video_url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-200); font-weight:600; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
                 🎥 Play Video
               </a>
@@ -1842,7 +1853,16 @@ function openReviewDossier(regId) {
           🎥 Qirath Recitation Video
         </h4>
         <div style="background:#000; border-radius:var(--radius-sm); border:1px solid var(--border-gold); overflow:hidden; margin-bottom:18px;">
-          ${(participant.video_url && (participant.video_url.includes('drive.google.com') || participant.video_url.includes('youtu') || !participant.video_url.match(/\.(mp4|mov|webm|avi|mkv|mp3|m4a|wav|aac|ogg)(\?.*)?$/i))) ? `
+          ${(participant.video_url && participant.video_url.includes('WhatsApp')) ? `
+            <div style="padding:22px 16px; text-align:center; background:#07120a;">
+              <span style="font-size:28px; display:block; margin-bottom:8px;">📱</span>
+              <strong style="color:#25d366; font-size:14px; display:block;">Submitted via WhatsApp (9632530219)</strong>
+              <p style="color:var(--text-muted); font-size:12px; margin:6px 0 14px;">Candidate sent their recitation video directly to WhatsApp number +91 9632530219</p>
+              <a href="https://wa.me/${(participant.whatsapp || participant.phone || '').replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" class="btn-nav-action btn-nav-gold" style="display:inline-flex; align-items:center; gap:8px; padding:8px 18px; text-decoration:none; font-size:12.5px;">
+                💬 Open WhatsApp Chat with Candidate
+              </a>
+            </div>
+          ` : (participant.video_url && (participant.video_url.includes('drive.google.com') || participant.video_url.includes('youtu') || !participant.video_url.match(/\.(mp4|mov|webm|avi|mkv|mp3|m4a|wav|aac|ogg)(\?.*)?$/i))) ? `
             <div style="padding:22px 16px; text-align:center; background:#0a1710;">
               <p style="color:var(--gold-200); font-weight:600; font-size:13.5px; margin-bottom:10px;">🔗 Cloud Video Link (Google Drive / YouTube)</p>
               <a href="${participant.video_url}" target="_blank" rel="noopener noreferrer" class="btn-nav-action btn-nav-gold" style="display:inline-flex; align-items:center; gap:8px; padding:8px 18px; text-decoration:none; font-size:12.5px;">
@@ -1879,7 +1899,7 @@ function openReviewDossier(regId) {
                 🗑️ Delete / Remove Aadhaar
               </button>
             </div>
-          ` : `<span style="color:var(--text-muted); font-size:12px;">No Aadhaar card uploaded.</span>`}
+          ` : `<span style="color:var(--text-muted); font-size:12px;">Not required / No Aadhaar uploaded.</span>`}
         </div>
 
         <h4 style="font-family:var(--font-serif); color:var(--gold-200); font-size:15px; margin-bottom:10px; text-transform:uppercase;">
@@ -1888,11 +1908,15 @@ function openReviewDossier(regId) {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div style="background:#091710; padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border-subtle);">
             <span style="font-size:11px; color:#e1306c; font-weight:700; display:block; margin-bottom:4px;">Instagram Follow</span>
-            <img src="${participant.ig_screenshot_url}" alt="Instagram Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.ig_screenshot_url}', '_blank')">
+            ${participant.ig_screenshot_url ? `
+              <img src="${participant.ig_screenshot_url}" alt="Instagram Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.ig_screenshot_url}', '_blank')">
+            ` : `<span style="color:var(--text-muted); font-size:11.5px; display:block; padding:35px 0;">Not uploaded (Direct Link)</span>`}
           </div>
           <div style="background:#091710; padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border-subtle);">
             <span style="font-size:11px; color:#25d366; font-weight:700; display:block; margin-bottom:4px;">WhatsApp Channel</span>
-            <img src="${participant.wa_screenshot_url}" alt="WhatsApp Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.wa_screenshot_url}', '_blank')">
+            ${participant.wa_screenshot_url ? `
+              <img src="${participant.wa_screenshot_url}" alt="WhatsApp Proof" style="width:100%; height:110px; object-fit:cover; border-radius:4px; cursor:pointer;" onclick="window.open('${participant.wa_screenshot_url}', '_blank')">
+            ` : `<span style="color:var(--text-muted); font-size:11.5px; display:block; padding:35px 0;">Not uploaded (Direct Link)</span>`}
           </div>
         </div>
       </div>

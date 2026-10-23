@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.participants (
     aadhaar_url TEXT,
     photo_url TEXT,
     poster_url TEXT,
-    video_url TEXT NOT NULL,
+    video_url TEXT DEFAULT 'Submitted via WhatsApp (+91 9632530219)',
     ig_screenshot_url TEXT,
     wa_screenshot_url TEXT,
     status VARCHAR(30) DEFAULT 'Pending Review', -- 'Pending Review', 'Approved', 'Shortlisted', 'Rejected'
@@ -35,9 +35,11 @@ CREATE TABLE IF NOT EXISTS public.participants (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- In case table already exists, add columns safely:
+-- In case table already exists, update columns safely:
 ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS poster_url TEXT;
+ALTER TABLE public.participants ALTER COLUMN video_url DROP NOT NULL;
+ALTER TABLE public.participants ALTER COLUMN video_url SET DEFAULT 'Submitted via WhatsApp (+91 9632530219)';
 
 -- 2. Create Indexes for super fast search & branch filtering
 CREATE INDEX IF NOT EXISTS idx_participants_branch ON public.participants(branch);

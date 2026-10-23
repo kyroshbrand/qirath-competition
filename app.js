@@ -169,11 +169,6 @@ function getFormState() {
   const wa = document.getElementById('whatsapp')?.value.trim() || '';
   const address = document.getElementById('address')?.value.trim() || '';
   const branch = document.querySelector('input[name="branch"]:checked')?.value || '';
-  const surah = document.getElementById('surah')?.value.trim() || '';
-  const aadhaar = document.getElementById('aadhaarInput')?.files[0];
-  const video = document.getElementById('videoInput')?.files[0];
-  const igShot = document.getElementById('igShotInput')?.files[0];
-  const waShot = document.getElementById('waShotInput')?.files[0];
   const terms = document.getElementById('termsAgree')?.checked || false;
 
   return {
@@ -183,10 +178,6 @@ function getFormState() {
     whatsapp: /^[6-9]\d{9}$/.test(wa),
     address: address.length >= 5,
     branch: !!branch,
-    aadhaar: !!aadhaar,
-    video: !!video,
-    igShot: !!igShot,
-    waShot: !!waShot,
     terms: terms
   };
 }
@@ -198,14 +189,10 @@ function checkFormValidity() {
   if (!submitBtn || !hintMsg) return;
 
   const missing = Object.keys(state).filter(k => !state[k]);
-  const followUnlocked = state.igShot && state.waShot;
 
   submitBtn.disabled = missing.length > 0;
 
-  if (!followUnlocked) {
-    hintMsg.textContent = "🔒 Upload both Instagram & WhatsApp follow screenshots to unlock submission";
-    hintMsg.style.color = "var(--gold-300)";
-  } else if (missing.length > 0) {
+  if (missing.length > 0) {
     hintMsg.textContent = `⚠️ Please complete all required fields (${missing.length} remaining)`;
     hintMsg.style.color = "#facc15";
   } else {
@@ -218,7 +205,7 @@ async function handleFormSubmit(e) {
   e.preventDefault();
   const state = getFormState();
   if (Object.values(state).includes(false)) {
-    alert("Please fill in all required fields and upload proofs.");
+    alert("Please fill in all required fields.");
     return;
   }
 
@@ -229,8 +216,8 @@ async function handleFormSubmit(e) {
   const progressPercent = document.getElementById('progressPercent');
 
   submitBtn.disabled = true;
-  progressBox.style.display = 'block';
-  hintMsg.textContent = "Uploading files and encrypting registration… Please keep this page open.";
+  if (progressBox) progressBox.style.display = 'block';
+  hintMsg.textContent = "Saving official registration… Please keep this page open.";
 
   // Generate Unique Registration ID: AKQC-2026-XXXX
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -238,31 +225,11 @@ async function handleFormSubmit(e) {
 
   try {
     const updateProgress = (pct) => {
-      progressBar.style.width = pct + '%';
+      if (progressBar) progressBar.style.width = pct + '%';
       if (progressPercent) progressPercent.textContent = pct + '%';
     };
 
-    updateProgress(15);
-
-    // 1. Upload Aadhaar Card
-    const aadhaarFile = document.getElementById('aadhaarInput').files[0];
-    const aadhaarUrl = await uploadToStorage('aadhaar-cards', aadhaarFile, registrationId);
-    updateProgress(40);
-
-    // 2. Upload Qirath Video
-    const videoFile = document.getElementById('videoInput').files[0];
-    const videoUrl = await uploadToStorage('qirath-videos', videoFile, registrationId);
-    updateProgress(70);
-
-    // 3. Upload Instagram Proof
-    const igFile = document.getElementById('igShotInput').files[0];
-    const igUrl = await uploadToStorage('follow-proofs', igFile, registrationId);
-    updateProgress(85);
-
-    // 4. Upload WhatsApp Proof
-    const waFile = document.getElementById('waShotInput').files[0];
-    const waUrl = await uploadToStorage('follow-proofs', waFile, registrationId);
-    updateProgress(95);
+    updateProgress(50);
 
     // Prepare complete record
     const participantPayload = {
@@ -277,10 +244,10 @@ async function handleFormSubmit(e) {
       branch: document.querySelector('input[name="branch"]:checked').value,
       surah_recited: "",
       maqam_style: document.getElementById('maqam')?.value || "Standard",
-      aadhaar_url: aadhaarUrl,
-      video_url: videoUrl,
-      ig_screenshot_url: igUrl,
-      wa_screenshot_url: waUrl,
+      aadhaar_url: null,
+      video_url: "Submitted via WhatsApp (+91 9632530219)",
+      ig_screenshot_url: null,
+      wa_screenshot_url: null,
       status: "Pending Review",
       judge_score: 0,
       judge_notes: "",
